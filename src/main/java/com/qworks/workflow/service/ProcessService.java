@@ -1,0 +1,23 @@
+package com.qworks.workflow.service;
+
+import com.qworks.workflow.dto.ProcessDto;
+import com.qworks.workflow.dto.request.TriggerProcessRequest;
+import org.camunda.community.rest.client.dto.VariableValueDto;
+import org.camunda.community.rest.client.invoker.ApiException;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+public interface ProcessService {
+
+    void triggerProcess(String processName, Map<String, VariableValueDto> variables, TriggerProcessRequest triggerProcessRequest) throws ApiException;
+
+    Optional<ProcessDto> getProcessById(String id);
+
+    List<ProcessDto> getAllProcesses(Pageable pageable);
+
+    void deleteProcess(String id);
+
+}

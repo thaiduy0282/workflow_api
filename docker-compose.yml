@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "${MONGO_PORT}:${MONGO_PORT}"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    networks:
+      - workflow-network
+
+  mysql:
+    image: mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+      interval: 10s
+      start_period: 10s
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: camunda_db
+    networks:
+      - workflow-network
+
+  camunda:
+    image: ktdung0801/camunda-bpm-platform:latest
+    container_name: camunda
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/camunda_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      WORKFLOW_SERVICE_URL: http://workflow:8090
+    networks:
+      - workflow-network
+
+  akka-message:
+    image: ktdung0801/akka-message:latest
+    container_name: akka-message
+    ports:
+      - "8085:8085"
+      - "8888:8888"
+    environment:
+      TCP_PORT: 8888
+      HTTP_PORT: 8085
+      TCP_SERVER_ADDRESS: "akka-message"
+    networks:
+      - workflow-network
+
+  myapp:
+    image: ktdung0801/workflow:latest
+    container_name: workflow
+    ports:
+      - "8090:8090"
+    depends_on:
+      - mongodb
+      - camunda
+    environment:
+      SERVER_PORT: 8090
+      SPRING_DATA_MONGODB_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      SPRING_DATA_MONGODB_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      SPRING_DATA_MONGODB_HOST: mongodb
+      SPRING_DATA_MONGODB_PORT: ${MONGO_PORT}
+      SPRING_DATA_MONGODB_DATABASE: workflow_management
+      SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: ${MONGO_DATABASE}
+      CAMUNDA_BPM_CLIENT_BASE-URL: http://camunda:8080/engine-rest
+      TCP_SERVER_ADDRESS: akka-message
+      TCP_PORT: 8888
+    networks:
+      - workflow-network
+
+networks:
+  workflow-network:
+    driver: bridge
