@@ -3,8 +3,10 @@ package com.qworks.workflow.enums;
 public enum ProcessStatus {
 
     CREATED,
-    IN_PROGRESS,
+    RUNNING,
     COMPLETED,
-    FAILED
+    FAILED,
+    ABORTED,
+    CANCELED
 
 }

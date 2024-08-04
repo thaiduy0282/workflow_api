@@ -7,13 +7,11 @@ import com.qworks.workflow.constants.WorkflowConstants;
 import com.qworks.workflow.dto.Data;
 import com.qworks.workflow.dto.Edge;
 import com.qworks.workflow.dto.Node;
-import com.qworks.workflow.dto.ProcessHistoryDto;
 import com.qworks.workflow.dto.WorkflowDto;
 import com.qworks.workflow.dto.request.CreateWorkflowRequest;
 import com.qworks.workflow.dto.request.UpdateWorkflowRequest;
 import com.qworks.workflow.entity.WorkflowEntity;
 import com.qworks.workflow.enums.NodeType;
-import com.qworks.workflow.enums.ProcessHistoryStatus;
 import com.qworks.workflow.enums.WorkflowStatus;
 import com.qworks.workflow.exception.NodeTypeNotSupport;
 import com.qworks.workflow.exception.ResourceNotFoundException;
@@ -21,7 +19,6 @@ import com.qworks.workflow.exception.SystemErrorException;
 import com.qworks.workflow.helper.LinkHelper;
 import com.qworks.workflow.mapper.WorkflowMapper;
 import com.qworks.workflow.repository.WorkflowRepository;
-import com.qworks.workflow.service.ProcessHistoryService;
 import com.qworks.workflow.service.WorkflowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +46,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -67,7 +63,6 @@ public class WorkflowServiceImpl implements WorkflowService {
     private final WorkflowMapper workflowMapper;
     private final ObjectMapper objectMapper;
     private final DeploymentApi deploymentApi;
-    private final ProcessHistoryService processHistoryService;
 
     @Override
     public Page<WorkflowDto> findAll(Pageable pageable) {
@@ -131,14 +126,11 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     @Transactional
     public File generateBPMNProcess(WorkflowDto workflowDto, List<Node> nodes, List<Edge> edges) throws IOException {
-
-        // Tạo một mô hình BPMN rỗng
         BpmnModelInstance modelInstance = Bpmn.createExecutableProcess("test").executable().done();
         Definitions definitions = modelInstance.newInstance(Definitions.class);
         definitions.setTargetNamespace("http://camunda.org/examples");
         modelInstance.setDefinitions(definitions);
 
-        // Tạo quy trình trong mô hình
         String processInstanceId = "definition_" + workflowDto.getId();
         Process process = createElement(definitions, processInstanceId, Process.class);
         process.setExecutable(true);
@@ -146,7 +138,6 @@ public class WorkflowServiceImpl implements WorkflowService {
 
         Map<String, Node> nodeMap = new HashMap<>();
         Map<String, FlowNode> flowNodeMap = new HashMap<>();
-        List<ProcessHistoryDto> processHistoryLst = new ArrayList<>();
 
         nodes.forEach(node -> {
             nodeMap.put(node.getId(), node);
@@ -162,7 +153,6 @@ public class WorkflowServiceImpl implements WorkflowService {
                     addExecutionListener(startEventNode, "start");
                     addExecutionListener(startEventNode, "end");
                     flowNodeMap.put(node.getId(), startEventNode);
-                    processHistoryLst.add(createProcessHistoryEntity(processInstanceId, startEventNode.getId(), startActivityName));
                     break;
                 case END_EVENT:
                     String preEndStepActivityName = "preEnd step";
@@ -173,8 +163,6 @@ public class WorkflowServiceImpl implements WorkflowService {
                     addExecutionListener(preEndStep, "start");
                     addExecutionListener(preEndStep, "end");
                     flowNodeMap.put(node.getId(), preEndStep);
-                    processHistoryLst.add(createProcessHistoryEntity(processInstanceId, preEndStep.getId(), preEndStepActivityName));
-
                     String endActivityName = "End";
                     EndEvent endEventNode = createElement(process, endStepId, EndEvent.class);
                     endEventNode.setName(endActivityName);
@@ -186,8 +174,6 @@ public class WorkflowServiceImpl implements WorkflowService {
                     addExecutionListener(endEventNode, "start");
                     addExecutionListener(endEventNode, "end");
                     flowNodeMap.put(endStepId, endEventNode);
-                    processHistoryLst.add(createProcessHistoryEntity(processInstanceId, endEventNode.getId(), endActivityName));
-
                     break;
                 case IF:
                     String validationFilterActivityName = "validation_filter";
@@ -198,7 +184,6 @@ public class WorkflowServiceImpl implements WorkflowService {
                     addExecutionListener(conditionNode, "start");
                     addExecutionListener(conditionNode, "end");
                     flowNodeMap.put(node.getId(), conditionNode);
-                    processHistoryLst.add(createProcessHistoryEntity(processInstanceId, conditionNode.getId(), validationFilterActivityName));
                     break;
                 case ACTION:
                     String actionActivityName = "action_task";
@@ -209,7 +194,6 @@ public class WorkflowServiceImpl implements WorkflowService {
                     addExecutionListener(actionNode, "start");
                     addExecutionListener(actionNode, "end");
                     flowNodeMap.put(node.getId(), actionNode);
-                    processHistoryLst.add(createProcessHistoryEntity(processInstanceId, actionNode.getId(), actionActivityName));
                     break;
                 case ERROR_HANDLER:
                     String errorHandlerActivityName = "error_handler";
@@ -220,7 +204,6 @@ public class WorkflowServiceImpl implements WorkflowService {
                     addExecutionListener(errorHandlerNode, "start");
                     addExecutionListener(errorHandlerNode, "end");
                     flowNodeMap.put(node.getId(), errorHandlerNode);
-                    processHistoryLst.add(createProcessHistoryEntity(processInstanceId, errorHandlerNode.getId(), errorHandlerActivityName));
                     break;
                 case LOOP:
                     FlowNode loopNode = createElement(process, node.getId(), FlowNode.class);
@@ -239,25 +222,12 @@ public class WorkflowServiceImpl implements WorkflowService {
             }
         });
 
-        // Validate và ghi mô hình vào file
         Bpmn.validateModel(modelInstance);
         File file = File.createTempFile("bpmn_process", ".bpmn");
         Bpmn.writeModelToFile(file, modelInstance);
 
         workflowDto.setProcessDefinitionId(processInstanceId);
-
-        processHistoryService.saveAll(processHistoryLst);
-
         return file;
-    }
-
-    private ProcessHistoryDto createProcessHistoryEntity(String processDefinitionId, String activityId, String activityName) {
-        return ProcessHistoryDto.builder()
-                .processDefinitionId(processDefinitionId)
-                .activityId(activityId)
-                .activityName(activityName)
-                .status(ProcessHistoryStatus.CREATED)
-                .build();
     }
 
     private void addExecutionListener(FlowNode flowNode, String event) {

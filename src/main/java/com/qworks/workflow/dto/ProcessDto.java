@@ -12,6 +12,7 @@ import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -28,13 +29,19 @@ public class ProcessDto {
 
     private String workflowId;
 
+    private String workflowName;
+
+    private String processInstanceId;
+
     private ProcessStatus status;
 
-    private UUID triggerBy;
+    private String triggerBy;
+
+    private List<ProcessNodeHistory> details;
 
     @CreatedDate
-    private Date triggerTime;
+    private Date startTime;
 
-    private Integer timeSince;
+    private Date endTime;
 
 }

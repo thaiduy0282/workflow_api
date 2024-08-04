@@ -27,6 +27,8 @@ public class WorkflowNodeConfigurationEntity {
 
     private String workflowId;
 
+    private String displayName;
+
     private String nodeId;
 
     private WorkflowTriggerConfigurationDto triggerConfiguration;

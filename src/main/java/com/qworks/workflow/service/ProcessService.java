@@ -2,6 +2,8 @@ package com.qworks.workflow.service;
 
 import com.qworks.workflow.dto.ProcessDto;
 import com.qworks.workflow.dto.request.TriggerProcessRequest;
+import com.qworks.workflow.dto.request.UpdateProcessRequest;
+import com.qworks.workflow.entity.ProcessEntity;
 import org.camunda.community.rest.client.dto.VariableValueDto;
 import org.camunda.community.rest.client.invoker.ApiException;
 import org.springframework.data.domain.Pageable;
@@ -20,4 +22,5 @@ public interface ProcessService {
 
     void deleteProcess(String id);
 
+    ProcessEntity update(UpdateProcessRequest request);
 }

@@ -1,5 +1,6 @@
 package com.qworks.workflow.entity;
 
+import com.qworks.workflow.dto.ProcessNodeHistory;
 import com.qworks.workflow.enums.ProcessStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,6 +12,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 @Document(collection = "processes")
@@ -26,14 +28,21 @@ public class ProcessEntity {
 
     private String processDefinitionId;
 
+    private String processInstanceId;
+
     private String workflowId;
+    private String workflowName;
 
     private ProcessStatus status;
 
-    private UUID triggerBy;
+    private String triggerBy;
+
+    private List<ProcessNodeHistory> details;
 
     @CreatedDate
-    private Date triggerTime;
+    private Date startTime;
+
+    private Date endTime;
 
     private Date endDate;
 }

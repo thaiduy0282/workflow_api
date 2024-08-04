@@ -12,6 +12,8 @@ public interface WorkflowNodeConfigurationRepository extends MongoRepository<Wor
 
     List<WorkflowNodeConfigurationEntity> findByWorkflowIdAndNodeId(String workflowId, String nodeId);
 
+    List<WorkflowNodeConfigurationEntity> findByNodeId(String nodeId);
+
     List<WorkflowNodeConfigurationEntity> findByWorkflowId(String workflowId);
 
     void deleteAllByWorkflowId(String workflowId);

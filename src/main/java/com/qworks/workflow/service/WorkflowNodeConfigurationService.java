@@ -16,6 +16,8 @@ public interface WorkflowNodeConfigurationService {
 
     WorkflowNodeConfigurationDto findByWorkflowIdAndNodeId(String workflowId, String nodeId);
 
+    WorkflowNodeConfigurationDto findByNodeId(String nodeId);
+
     List<WorkflowNodeConfigurationDto> create(String workflowId, CreateWorkflowNodeConfigurationRequest request);
 
     List<WorkflowNodeConfigurationEntity> findConfigurationsForUpdateAccount();

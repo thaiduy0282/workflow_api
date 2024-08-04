@@ -49,6 +49,13 @@ public class WorkflowNodeConfigurationServiceImpl implements WorkflowNodeConfigu
                 .findFirst().get();
     }
 
+    @Override
+    public WorkflowNodeConfigurationDto findByNodeId(String nodeId) {
+        return workflowNodeConfigurationRepository.findByNodeId(nodeId).stream()
+                .map(workflowConditionMapper::toWorkflowConditionDto)
+                .findFirst().get();
+    }
+
     private WorkflowNodeConfigurationEntity getWorkflowById(String id) {
         return workflowNodeConfigurationRepository.findById(id)
                 .orElseThrow(() ->

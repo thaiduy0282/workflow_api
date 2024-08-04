@@ -30,4 +30,5 @@ public class PreCompleteExternalTask implements ExternalTaskHandler {
         // Complete the task
         externalTaskService.complete(externalTask);
     }
+
 }

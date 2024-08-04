@@ -42,6 +42,8 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
       WORKFLOW_SERVICE_URL: http://workflow:8090
+      ADMIN_USER: demo
+      ADMIN_PASSWORD: demo
     networks:
       - workflow-network
 
@@ -74,7 +76,8 @@ services:
       SPRING_DATA_MONGODB_PORT: ${MONGO_PORT}
       SPRING_DATA_MONGODB_DATABASE: workflow_management
       SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: ${MONGO_DATABASE}
-      CAMUNDA_BPM_CLIENT_BASE-URL: http://camunda:8080/engine-rest
+      CAMUNDA_BPM_CLIENT_BASE_URL: http://camunda:8080/engine-rest
+      QWORKS_BASE_URL: https://dev.qworks.ai/metabench/api/
       TCP_SERVER_ADDRESS: akka-message
       TCP_PORT: 8888
     networks:

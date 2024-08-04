@@ -24,6 +24,8 @@ public class WorkflowNodeConfigurationDto {
 
     private String workflowId;
 
+    private String displayName;
+
     private String nodeId;
 
     private WorkflowTriggerConfigurationDto triggerConfiguration;

@@ -11,4 +11,6 @@ public interface ProcessRepository extends MongoRepository<ProcessEntity, String
 
     Optional<ProcessEntity> findByProcessDefinitionId(String processDefinitionId);
 
+    Optional<ProcessEntity> findByProcessInstanceId(String processInstanceId);
+
 }
