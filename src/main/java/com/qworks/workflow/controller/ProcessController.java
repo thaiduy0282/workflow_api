@@ -11,12 +11,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.camunda.community.rest.client.dto.VariableValueDto;
 import org.camunda.community.rest.client.invoker.ApiException;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -50,8 +52,17 @@ public class ProcessController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<ProcessDto> processes = processService.getAllProcesses(PageRequest.of(page, size));
-        return ResponseEntity.ok(new ApiResponse<>(processes.size(), processes));
+        Sort sort = Sort.by(Sort.Order.desc("startTime"));
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<ProcessDto> processDtos = processService.findAll(pageable);
+        ApiResponse<ProcessDto> response = new ApiResponse<>(
+                processDtos.getTotalElements(),
+                size,
+                page,
+                processDtos.getTotalPages(),
+                processDtos.getContent()
+        );
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")

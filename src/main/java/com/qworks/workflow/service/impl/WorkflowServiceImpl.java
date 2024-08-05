@@ -46,11 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static com.qworks.workflow.constants.WorkflowConstants.NODE_ID_PREFIX;
 
@@ -150,8 +146,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     startEventNode.setName(startActivityName);
                     startEventNode.setParallelMultiple(true);
                     startEventNode.setInterrupting(false);
-                    addExecutionListener(startEventNode, "start");
-                    addExecutionListener(startEventNode, "end");
+                    addExecutionListener(startEventNode);
                     flowNodeMap.put(node.getId(), startEventNode);
                     break;
                 case END_EVENT:
@@ -160,8 +155,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     preEndStep.setCamundaType("external");
                     preEndStep.setCamundaTopic("pre_complete");
                     preEndStep.setName(preEndStepActivityName);
-                    addExecutionListener(preEndStep, "start");
-                    addExecutionListener(preEndStep, "end");
+                    addExecutionListener(preEndStep);
                     flowNodeMap.put(node.getId(), preEndStep);
                     String endActivityName = "End";
                     EndEvent endEventNode = createElement(process, endStepId, EndEvent.class);
@@ -171,8 +165,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     edge.setTarget(endStepId);
                     edges.add(edge);
 
-                    addExecutionListener(endEventNode, "start");
-                    addExecutionListener(endEventNode, "end");
+                    addExecutionListener(endEventNode);
                     flowNodeMap.put(endStepId, endEventNode);
                     break;
                 case IF:
@@ -181,8 +174,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     conditionNode.setCamundaType("external");
                     conditionNode.setCamundaTopic("validation_filter");
                     conditionNode.setName(validationFilterActivityName);
-                    addExecutionListener(conditionNode, "start");
-                    addExecutionListener(conditionNode, "end");
+                    addExecutionListener(conditionNode);
                     flowNodeMap.put(node.getId(), conditionNode);
                     break;
                 case ACTION:
@@ -191,8 +183,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     actionNode.setCamundaType("external");
                     actionNode.setCamundaTopic("action_task");
                     actionNode.setName(actionActivityName);
-                    addExecutionListener(actionNode, "start");
-                    addExecutionListener(actionNode, "end");
+                    addExecutionListener(actionNode);
                     flowNodeMap.put(node.getId(), actionNode);
                     break;
                 case ERROR_HANDLER:
@@ -201,8 +192,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     errorHandlerNode.setCamundaType("external");
                     errorHandlerNode.setCamundaTopic("error_handler");
                     errorHandlerNode.setName(errorHandlerActivityName);
-                    addExecutionListener(errorHandlerNode, "start");
-                    addExecutionListener(errorHandlerNode, "end");
+                    addExecutionListener(errorHandlerNode);
                     flowNodeMap.put(node.getId(), errorHandlerNode);
                     break;
                 case LOOP:
@@ -230,18 +220,21 @@ public class WorkflowServiceImpl implements WorkflowService {
         return file;
     }
 
-    private void addExecutionListener(FlowNode flowNode, String event) {
-        CamundaExecutionListener listener = flowNode.getModelInstance().newInstance(CamundaExecutionListener.class);
-        listener.setCamundaEvent(event);
-        listener.setCamundaDelegateExpression("#{taskExecutionListener}");
+    private void addExecutionListener(FlowNode flowNode) {
+        List<String> events = Arrays.asList("start", "end");
+        events.forEach(event -> {
+            CamundaExecutionListener listener = flowNode.getModelInstance().newInstance(CamundaExecutionListener.class);
+            listener.setCamundaEvent(event);
+            listener.setCamundaDelegateExpression("#{taskExecutionListener}");
 
-        ExtensionElements extensionElements = flowNode.getExtensionElements();
-        if (extensionElements == null) {
-            extensionElements = flowNode.getModelInstance().newInstance(ExtensionElements.class);
-            flowNode.setExtensionElements(extensionElements);
-        }
+            ExtensionElements extensionElements = flowNode.getExtensionElements();
+            if (extensionElements == null) {
+                extensionElements = flowNode.getModelInstance().newInstance(ExtensionElements.class);
+                flowNode.setExtensionElements(extensionElements);
+            }
 
-        extensionElements.addChildElement(listener);
+            extensionElements.addChildElement(listener);
+        });
     }
 
     @Override

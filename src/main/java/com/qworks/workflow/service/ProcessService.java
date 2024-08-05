@@ -6,6 +6,7 @@ import com.qworks.workflow.dto.request.UpdateProcessRequest;
 import com.qworks.workflow.entity.ProcessEntity;
 import org.camunda.community.rest.client.dto.VariableValueDto;
 import org.camunda.community.rest.client.invoker.ApiException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -13,6 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface ProcessService {
+
+    Page<ProcessDto> findAll(Pageable pageable);
 
     void triggerProcess(String processName, Map<String, VariableValueDto> variables, TriggerProcessRequest triggerProcessRequest) throws ApiException;
 

@@ -8,6 +8,7 @@ import com.qworks.workflow.dto.request.UpdateProcessRequest;
 import com.qworks.workflow.entity.ProcessEntity;
 import com.qworks.workflow.enums.ProcessStatus;
 import com.qworks.workflow.exception.ResourceNotFoundException;
+import com.qworks.workflow.helper.LinkHelper;
 import com.qworks.workflow.mapper.ProcessMapper;
 import com.qworks.workflow.repository.ProcessRepository;
 import com.qworks.workflow.repository.WorkflowRepository;
@@ -21,6 +22,7 @@ import org.camunda.community.rest.client.dto.ProcessInstanceWithVariablesDto;
 import org.camunda.community.rest.client.dto.StartProcessInstanceDto;
 import org.camunda.community.rest.client.dto.VariableValueDto;
 import org.camunda.community.rest.client.invoker.ApiException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +45,12 @@ public class ProcessServiceImpl implements ProcessService {
     private final ProcessMapper processMapper;
 
     private final WorkflowNodeConfigurationService workflowNodeConfigurationService;
+
+    @Override
+    public Page<ProcessDto> findAll(Pageable pageable) {
+        return processRepository.findAll(pageable)
+                .map(processMapper::toDto);
+    }
 
     @Override
     public void triggerProcess(String processName, Map<String, VariableValueDto> variables, TriggerProcessRequest triggerProcessRequest) throws ApiException {
@@ -101,32 +109,40 @@ public class ProcessServiceImpl implements ProcessService {
         ProcessEntity processEntity = optionalProcessEntity.get();
         if (END_NODE.equals(request.activityName())) {
             processEntity.setStatus(request.status());
-            processEntity.setEndTime(request.endDate().orElse(new Date()));
+            processEntity.setEndTime(request.endTime().orElse(new Date()));
         }
 
         if (ProcessStatus.FAILED.equals(request.status())) {
             processEntity.setStatus(ProcessStatus.FAILED);
-            processEntity.setEndTime(request.endDate().orElse(new Date()));
+            processEntity.setEndTime(request.endTime().orElse(new Date()));
         }
 
         List<ProcessNodeHistory> processHistory = processEntity.getDetails();
         if (processHistory.isEmpty() || !Objects.equals(processHistory.get(processHistory.size() - 1).getNodeId(), request.nodeId())) {
             ProcessNodeHistory nodeHistory = new ProcessNodeHistory();
-            nodeHistory.setStartDate(request.startDate().orElse(new Date()));
-            nodeHistory.setEndDate(request.endDate().orElse(null));
+            nodeHistory.setStartTime(request.startTime().orElse(new Date()));
+            nodeHistory.setEndTime(request.endTime().orElse(null));
             nodeHistory.setStatus(request.status());
             nodeHistory.setNodeId(request.nodeId());
 
-            WorkflowNodeConfigurationDto nodeConfigurationDto = workflowNodeConfigurationService.findByNodeId(request.nodeId());
-            nodeHistory.setDisplayName(StringUtils.isEmpty(nodeConfigurationDto.getDisplayName()) ? request.activityName() : nodeConfigurationDto.getDisplayName());
+            nodeHistory.setDisplayName(getDisplayName(request));
             processEntity.getDetails().add(nodeHistory);
         } else {
             ProcessNodeHistory nodeHistory = processHistory.get(processHistory.size() - 1);
             nodeHistory.setStatus(request.status());
-            nodeHistory.setEndDate(request.endDate().orElse(new Date()));
+            nodeHistory.setEndTime(request.endTime().orElse(new Date()));
             nodeHistory.setNote(request.note().orElse(""));
         }
 
         return processRepository.save(processEntity);
+    }
+
+    private String getDisplayName(UpdateProcessRequest request) {
+        try {
+            WorkflowNodeConfigurationDto nodeConfigurationDto = this.workflowNodeConfigurationService.findByNodeId(request.nodeId());
+            return StringUtils.isEmpty(nodeConfigurationDto.getDisplayName()) ? request.activityName() : nodeConfigurationDto.getDisplayName();
+        } catch (Exception e) {
+            return request.activityName();
+        }
     }
 }

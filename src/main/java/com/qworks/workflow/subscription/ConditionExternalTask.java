@@ -53,7 +53,11 @@ public class ConditionExternalTask implements ExternalTaskHandler {
             isTrueCase = evaluateConditions(configurationDto, triggerDataObj);
         } catch (Exception e) {
             LOGGER.info("Failed to validate the expression with details message: " + e.getMessage());
-            externalTaskService.handleBpmnError(externalTask, "validationError", "An error occurred while validating the condition");
+            Map<String, Object> result = new HashMap<>();
+            result.put("isFailed", true);
+            result.put("errMessage", "Failed to validate the expression with details message: " + e.getMessage());
+            result.put("isTrue", false);
+            externalTaskService.complete(externalTask, result);
             return;
         }
 

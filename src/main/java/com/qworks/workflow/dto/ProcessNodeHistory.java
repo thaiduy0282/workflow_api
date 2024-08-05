@@ -27,7 +27,7 @@ public class ProcessNodeHistory {
 
     private String note;
 
-    private Date startDate;
+    private Date startTime;
 
-    private Date endDate;
+    private Date endTime;
 }
