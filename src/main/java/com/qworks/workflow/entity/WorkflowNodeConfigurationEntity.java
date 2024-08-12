@@ -1,20 +1,23 @@
 package com.qworks.workflow.entity;
 
+import com.azure.spring.data.cosmos.core.mapping.Container;
 import com.qworks.workflow.dto.WorkflowActionConfigurationDto;
 import com.qworks.workflow.dto.WorkflowConditionExpressionDto;
 import com.qworks.workflow.dto.WorkflowErrorConfigurationDto;
 import com.qworks.workflow.dto.WorkflowTriggerConfigurationDto;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 
-@Document(collection = "node-configurations")
+@Container(containerName = "node-configurations")
 @Getter
 @Setter
 @AllArgsConstructor

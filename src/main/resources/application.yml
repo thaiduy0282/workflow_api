@@ -4,13 +4,11 @@ spring:
   main:
     allow-bean-definition-overriding: true
   data:
-    mongodb:
-      username: ${SPRING_DATA_MONGODB_USERNAME:admin}
-      password: ${SPRING_DATA_MONGODB_PASSWORD:secret}
-      host: ${SPRING_DATA_MONGODB_HOST:localhost}
-      port: ${SPRING_DATA_MONGODB_PORT:27017}
-      database: ${SPRING_DATA_MONGODB_DATABASE:workflow_management}
-      authentication-database: ${SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE:admin}
+    cosmos:
+      uri: ${AZURE_COSMOS_URI:https://qworks-workflow.documents.azure.com:443}
+      key: ${AZURE_COSMOS_KEY}
+      database: ${AZURE_COSMOS_DATABASE:workflow_management}
+      populate-query-metrics: ${AZURE_COSMOS_QUERY_METRICS:false}
 
 server:
   port: ${SERVER_PORT:8090}

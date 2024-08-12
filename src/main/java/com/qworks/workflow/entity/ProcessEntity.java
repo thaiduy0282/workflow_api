@@ -9,13 +9,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import com.azure.spring.data.cosmos.core.mapping.Container;
 
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-@Document(collection = "processes")
+@Container(containerName = "processes")
 @Getter
 @Setter
 @AllArgsConstructor

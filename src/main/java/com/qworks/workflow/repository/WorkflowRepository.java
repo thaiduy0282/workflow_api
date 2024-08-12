@@ -1,15 +1,15 @@
 package com.qworks.workflow.repository;
 
+import com.azure.spring.data.cosmos.repository.CosmosRepository;
 import com.qworks.workflow.entity.WorkflowEntity;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface WorkflowRepository extends MongoRepository<WorkflowEntity, String> {
+public interface WorkflowRepository extends CosmosRepository<WorkflowEntity, String> {
 
     @NotNull
     Page<WorkflowEntity> findAll(@NotNull Pageable pageable);

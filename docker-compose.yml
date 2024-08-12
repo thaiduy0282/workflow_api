@@ -1,17 +1,6 @@
 version: '3.8'
 
 services:
-  mongodb:
-    image: mongo
-    container_name: mongodb
-    ports:
-      - "${MONGO_PORT}:${MONGO_PORT}"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-    networks:
-      - workflow-network
-
   mysql:
     image: mysql
     healthcheck:
@@ -30,7 +19,7 @@ services:
       - workflow-network
 
   camunda:
-    image: ktdung0801/camunda-bpm-platform:latest
+    image: thaiduy0282/workflow-camunda-engine:latest
     container_name: camunda
     ports:
       - "8080:8080"
@@ -61,7 +50,7 @@ services:
       - workflow-network
 
   myapp:
-    image: ktdung0801/workflow:latest
+    image: thaiduy0282/workflow-api:latest
     container_name: workflow
     ports:
       - "8090:8090"
@@ -70,12 +59,9 @@ services:
       - camunda
     environment:
       SERVER_PORT: 8090
-      SPRING_DATA_MONGODB_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      SPRING_DATA_MONGODB_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-      SPRING_DATA_MONGODB_HOST: mongodb
-      SPRING_DATA_MONGODB_PORT: ${MONGO_PORT}
-      SPRING_DATA_MONGODB_DATABASE: workflow_management
-      SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: ${MONGO_DATABASE}
+      AZURE_COSMOS_URI: https://qworks-workflow.documents.azure.com:443
+      AZURE_COSMOS_KEY: AZURE_COSMOS_KEY
+      AZURE_COSMOS_DATABASE: workflow_management
       CAMUNDA_BPM_CLIENT_BASE_URL: http://camunda:8080/engine-rest
       QWORKS_BASE_URL: https://dev.qworks.ai/metabench/api/
       TCP_SERVER_ADDRESS: akka-message
