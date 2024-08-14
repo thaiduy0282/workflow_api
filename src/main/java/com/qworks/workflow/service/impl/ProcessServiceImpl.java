@@ -64,6 +64,7 @@ public class ProcessServiceImpl implements ProcessService {
         startProcessInstanceDto.setVariables(variables);
 
         var processEntity = new ProcessEntity();
+        processEntity.setId(UUID.randomUUID().toString());
         processEntity.setWorkflowId(workflowEntity.getId());
         processEntity.setWorkflowName(workflowEntity.getName());
         processEntity.setProcessInstanceId(processInstanceId);

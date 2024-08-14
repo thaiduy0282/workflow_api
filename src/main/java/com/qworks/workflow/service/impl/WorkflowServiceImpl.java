@@ -82,6 +82,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     public WorkflowDto create(CreateWorkflowRequest request) {
         WorkflowDto workflowDto = new WorkflowDto();
+        workflowDto.setId(UUID.randomUUID().toString());
         request.name().ifPresent(workflowDto::setName);
         request.type().ifPresent(workflowDto::setType);
         request.createdBy().ifPresent(workflowDto::setCreatedBy);
@@ -91,6 +92,8 @@ public class WorkflowServiceImpl implements WorkflowService {
         WorkflowEntity workflowEntity = workflowMapper.toWorkflowEntity(workflowDto);
         workflowEntity.setNodes(convertToJsonString(request.nodes()));
         workflowEntity.setEdges(convertToJsonString(request.edges()));
+        workflowEntity.setCreatedDate(new Date());
+        workflowEntity.setLastModifiedDate(new Date());
         workflowEntity = workflowRepository.save(workflowEntity);
         return workflowMapper.toWorkflowDto(workflowEntity);
     }
@@ -103,7 +106,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         dto.type().ifPresent(existingWorkflow::setType);
         dto.nodes().ifPresent(nodes -> existingWorkflow.setNodes(convertToJsonString(nodes)));
         dto.edges().ifPresent(edges -> existingWorkflow.setEdges(convertToJsonString(edges)));
-
+        existingWorkflow.setLastModifiedDate(new Date());
         WorkflowEntity savedWorkflow = workflowRepository.save(existingWorkflow);
         return workflowMapper.toWorkflowDto(savedWorkflow);
     }

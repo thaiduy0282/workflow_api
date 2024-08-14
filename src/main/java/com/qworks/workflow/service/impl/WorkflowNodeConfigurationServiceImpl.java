@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -70,6 +71,7 @@ public class WorkflowNodeConfigurationServiceImpl implements WorkflowNodeConfigu
         List<WorkflowNodeConfigurationDto> nodeConfigurationDtos = new ArrayList<>();
         request.nodeConfigurations().forEach(nodeConfiguration -> {
             WorkflowNodeConfigurationEntity workflowNodeConfigurationEntity = workflowConditionMapper.toWorkflowConditionEntity(nodeConfiguration);
+            workflowNodeConfigurationEntity.setId(UUID.randomUUID().toString());
             workflowNodeConfigurationEntity.setWorkflowId(workflowId);
             workflowNodeConfigurationEntity = workflowNodeConfigurationRepository.save(workflowNodeConfigurationEntity);
             WorkflowNodeConfigurationDto nodeConfigurationDto = workflowConditionMapper.toWorkflowConditionDto(workflowNodeConfigurationEntity);
