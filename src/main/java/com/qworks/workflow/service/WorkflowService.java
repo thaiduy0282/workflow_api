@@ -5,6 +5,7 @@ import com.qworks.workflow.dto.Node;
 import com.qworks.workflow.dto.WorkflowDto;
 import com.qworks.workflow.dto.request.CreateWorkflowRequest;
 import com.qworks.workflow.dto.request.UpdateWorkflowRequest;
+import com.qworks.workflow.exception.BPMNException;
 import org.camunda.community.rest.client.invoker.ApiException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,8 +28,8 @@ public interface WorkflowService {
 
     void batchDelete(List<String> ids);
 
-    File generateBPMNProcess(WorkflowDto workflowDto, List<Node> nodes, List<Edge> edges) throws IOException, ApiException;
+    File generateBPMNProcess(WorkflowDto workflowDto, List<Node> nodes, List<Edge> edges) throws IOException, ApiException, Exception;
 
-    void publishWorkflow(String workflowId, boolean isPublished) throws IOException, ApiException;
+    void publishWorkflow(String workflowId, boolean isPublished) throws BPMNException;
 
 }

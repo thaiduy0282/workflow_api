@@ -13,6 +13,7 @@ import com.qworks.workflow.dto.request.UpdateWorkflowRequest;
 import com.qworks.workflow.entity.WorkflowEntity;
 import com.qworks.workflow.enums.NodeType;
 import com.qworks.workflow.enums.WorkflowStatus;
+import com.qworks.workflow.exception.BPMNException;
 import com.qworks.workflow.exception.NodeTypeNotSupport;
 import com.qworks.workflow.exception.ResourceNotFoundException;
 import com.qworks.workflow.exception.SystemErrorException;
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
 import org.camunda.bpm.model.bpmn.Bpmn;
+import org.camunda.bpm.model.bpmn.BpmnModelException;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.BpmnModelElementInstance;
 import org.camunda.bpm.model.bpmn.instance.ConditionExpression;
@@ -36,6 +38,7 @@ import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 import org.camunda.bpm.model.bpmn.instance.ServiceTask;
 import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.camunda.CamundaExecutionListener;
+import org.camunda.bpm.model.xml.ModelValidationException;
 import org.camunda.community.rest.client.api.DeploymentApi;
 import org.camunda.community.rest.client.dto.DeploymentWithDefinitionsDto;
 import org.camunda.community.rest.client.invoker.ApiException;
@@ -124,7 +127,7 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     @Override
     @Transactional
-    public File generateBPMNProcess(WorkflowDto workflowDto, List<Node> nodes, List<Edge> edges) throws IOException {
+    public File generateBPMNProcess(WorkflowDto workflowDto, List<Node> nodes, List<Edge> edges) throws Exception {
         BpmnModelInstance modelInstance = Bpmn.createExecutableProcess("test").executable().done();
         Definitions definitions = modelInstance.newInstance(Definitions.class);
         definitions.setTargetNamespace("http://camunda.org/examples");
@@ -153,7 +156,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     flowNodeMap.put(node.getId(), startEventNode);
                     break;
                 case END_EVENT:
-                    String preEndStepActivityName = "preEnd step";
+                    String preEndStepActivityName = "preComplete step";
                     ServiceTask preEndStep = createElement(process, node.getId(), ServiceTask.class);
                     preEndStep.setCamundaType("external");
                     preEndStep.setCamundaTopic("pre_complete");
@@ -215,9 +218,21 @@ public class WorkflowServiceImpl implements WorkflowService {
             }
         });
 
-        Bpmn.validateModel(modelInstance);
-        File file = File.createTempFile("bpmn_process", ".bpmn");
-        Bpmn.writeModelToFile(file, modelInstance);
+        File file = null;
+        try {
+            Bpmn.validateModel(modelInstance);
+            file = File.createTempFile("bpmn_process", ".bpmn");
+            Bpmn.writeModelToFile(file, modelInstance);
+        } catch (BpmnModelException e) {
+            log.error("Occurred error while writing model to file: {}", e.getMessage());
+            throw new BPMNException("Occurred error while writing model to file: " + e.getMessage());
+        } catch (ModelValidationException e) {
+            log.error("Occurred error while validating model: {}", e.getMessage());
+            throw new BPMNException("Occurred error while writing model to file: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Occurred error while generating BPMN model: {}", e.getMessage());
+            throw new BPMNException("Occurred error while writing model to file: " + e.getMessage());
+        }
 
         workflowDto.setProcessDefinitionId(processInstanceId);
         return file;
@@ -241,37 +256,43 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
-    public void publishWorkflow(String workflowId, boolean isPublished) throws IOException, ApiException {
-        try {
-            WorkflowDto workflowDto = findById(workflowId);
-            if (workflowDto == null) {
-                throw new ResourceNotFoundException("Workflow not found");
-            }
-
-            ObjectMapper mapper = new ObjectMapper();
-            List<Node> nodes = mapper.convertValue(workflowDto.getNodes(), new TypeReference<>() {
-            });
-            List<Edge> edges = mapper.convertValue(workflowDto.getEdges(), new TypeReference<>() {
-            });
-
-            File file = generateBPMNProcess(workflowDto, nodes, edges);
-            File outputFile = BPMNDiagramGenerator.generateBPMNDiagram(file);
-
-            log.info("prepare to call createDeployment...");
-            DeploymentWithDefinitionsDto response = deploymentApi.createDeployment(null, "QWorks Workflow App", true, true, workflowDto.getName(), new Date(), outputFile);
-            log.info("call done!");
-
-            if (response != null) {
-                log.info("response not null");
-                log.info("id: {}", response.getId());
-                workflowDto.setStatus(WorkflowStatus.PUBLISHED);
-                saveWorkflow(workflowDto);
-            } else {
-                log.info("response null!!!!!");
-            }
-        } catch (ApiException e) {
-            log.error(e.getMessage());
+    public void publishWorkflow(String workflowId, boolean isPublished) throws BPMNException {
+        WorkflowDto workflowDto = findById(workflowId);
+        if (workflowDto == null) {
+            throw new ResourceNotFoundException("Workflow not found");
         }
+
+        ObjectMapper mapper = new ObjectMapper();
+        List<Node> nodes = mapper.convertValue(workflowDto.getNodes(), new TypeReference<>() {});
+        List<Edge> edges = mapper.convertValue(workflowDto.getEdges(), new TypeReference<>() {});
+
+        File file = null;
+        File outputFile = null;
+        try {
+            file = generateBPMNProcess(workflowDto, nodes, edges);
+            outputFile = BPMNDiagramGenerator.generateBPMNDiagram(file);
+        } catch (Exception e) {
+            log.error("Occurred error while generating the BPMN diagram: " + workflowId, e);
+            throw new BPMNException("Occurred error while generating the BPMN diagram: " + workflowId);
+        }
+
+        DeploymentWithDefinitionsDto response = null;
+        try {
+            log.info("prepare to call createDeployment...");
+            response = deploymentApi.createDeployment(null, "QWorks Workflow App", true, true, workflowDto.getName(), new Date(), outputFile);
+        } catch (ApiException e) {
+            log.error("Occurred error while deploying BPMN diagram to BPMN serve: " + workflowId, e);
+            throw new BPMNException("Occurred error while deploying BPMN diagram to BPMN serve: " + workflowId);
+        }
+
+        if (response == null) {
+            log.error("Occurred error while deploying BPMN diagram to BPMN serve: " + workflowId);
+            throw new BPMNException("Occurred error while deploying BPMN diagram to BPMN serve: " + workflowId);
+        }
+
+        log.info("Workflow is published successfully!!" + workflowId);
+        workflowDto.setStatus(WorkflowStatus.PUBLISHED);
+        saveWorkflow(workflowDto);
     }
 
 

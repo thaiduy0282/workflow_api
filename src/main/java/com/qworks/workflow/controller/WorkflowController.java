@@ -6,12 +6,15 @@ import com.qworks.workflow.dto.request.CreateWorkflowRequest;
 import com.qworks.workflow.dto.request.TestWorkflowRequest;
 import com.qworks.workflow.dto.request.UpdateWorkflowRequest;
 import com.qworks.workflow.dto.response.ApiResponse;
+import com.qworks.workflow.exception.BPMNException;
+import com.qworks.workflow.exception.model.SuccessResponse;
 import com.qworks.workflow.service.WorkflowService;
 import lombok.RequiredArgsConstructor;
 import org.camunda.community.rest.client.invoker.ApiException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,26 +63,36 @@ public class WorkflowController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteWorkflow(@PathVariable String id) {
+    public ResponseEntity<SuccessResponse> deleteWorkflow(@PathVariable String id) {
         workflowService.delete(id);
-        return ResponseEntity.noContent().build();
+        SuccessResponse response = SuccessResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message("Data has been deleted successfully..!")
+                .data(id)
+                .build();
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/all")
-    public ResponseEntity<Void> bulkDeleteWorkflow(@RequestBody BulkDeleteWorkflowRequest request) {
+    public ResponseEntity<SuccessResponse> bulkDeleteWorkflow(@RequestBody BulkDeleteWorkflowRequest request) {
         workflowService.batchDelete(request.ids());
-        return ResponseEntity.noContent().build();
+        SuccessResponse response = SuccessResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message("Data has been deleted successfully..!")
+                .data(request.ids())
+                .build();
+        return ResponseEntity.ok(response);
     }
 
 
     @PostMapping("/{workflowId}/publish")
-    public ResponseEntity<Object> publish(@PathVariable String workflowId, @RequestParam boolean isPublished) throws IOException, ApiException {
+    public ResponseEntity<SuccessResponse> publish(@PathVariable String workflowId, @RequestParam boolean isPublished) {
         workflowService.publishWorkflow(workflowId, isPublished);
-        return ResponseEntity.ok(null);
+        SuccessResponse response = SuccessResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message("Workflow is published successfully..!")
+                .data(workflowId)
+                .build();
+        return ResponseEntity.ok(response);
     }
-
-    @PostMapping("/generate")
-    public ResponseEntity<Object> generate(@RequestBody TestWorkflowRequest request) throws IOException, ApiException {
-        workflowService.generateBPMNProcess(WorkflowDto.builder().id(request.workflowId()).build(), request.nodes(), request.edges());
-        return ResponseEntity.noContent().build();    }
 }

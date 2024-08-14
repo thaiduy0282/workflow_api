@@ -1,10 +1,12 @@
 package com.qworks.workflow.exception.handler;
 
+import com.qworks.workflow.exception.BPMNException;
 import com.qworks.workflow.exception.NodeTypeNotSupport;
 import com.qworks.workflow.exception.model.ErrorResponse;
 import com.qworks.workflow.exception.ResourceNotFoundException;
 import com.qworks.workflow.exception.SystemErrorException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,11 +21,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse handleResourceNotFoundException(ResourceNotFoundException ex) {
-        return ErrorResponse.builder()
+    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        ErrorResponse response = ErrorResponse.builder()
                 .status(HttpStatus.NOT_FOUND.value())
                 .message(ex.getMessage())
+                .data(null)
                 .build();
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -40,28 +46,52 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SystemErrorException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ErrorResponse handleSystemErrorException(SystemErrorException ex) {
-        return ErrorResponse.builder()
+    public ResponseEntity<ErrorResponse> handleSystemErrorException(SystemErrorException ex) {
+        ErrorResponse response = ErrorResponse.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .message(ex.getMessage())
+                .data(null)
                 .build();
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
     }
 
     @ExceptionHandler(NodeTypeNotSupport.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleNodeTypeNotSupportException(NodeTypeNotSupport ex) {
-        return ErrorResponse.builder()
+    public ResponseEntity<ErrorResponse> handleNodeTypeNotSupportException(NodeTypeNotSupport ex) {
+        ErrorResponse response = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
                 .message(ex.getMessage())
+                .data(null)
                 .build();
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+    @ExceptionHandler(BPMNException.class)
+    public ResponseEntity<Object> handleException(BPMNException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .message(ex.getMessage())
+                .data(null)
+                .build();
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
     }
 
     @ExceptionHandler(Exception.class)
-    public ErrorResponse handleException(Exception ex) {
-        return ErrorResponse.builder()
+    public ResponseEntity<ErrorResponse> handleException(Exception ex) {
+        ErrorResponse response = ErrorResponse.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .message(ex.getMessage())
+                .data(null)
                 .build();
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
     }
 
 }
