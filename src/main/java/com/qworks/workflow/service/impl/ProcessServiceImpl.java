@@ -2,18 +2,17 @@ package com.qworks.workflow.service.impl;
 
 import com.qworks.workflow.dto.ProcessDto;
 import com.qworks.workflow.dto.ProcessNodeHistory;
-import com.qworks.workflow.dto.WorkflowNodeConfigurationDto;
+import com.qworks.workflow.dto.WorkflowNodeDto;
 import com.qworks.workflow.dto.request.TriggerProcessRequest;
 import com.qworks.workflow.dto.request.UpdateProcessRequest;
 import com.qworks.workflow.entity.ProcessEntity;
 import com.qworks.workflow.enums.ProcessStatus;
 import com.qworks.workflow.exception.ResourceNotFoundException;
-import com.qworks.workflow.helper.LinkHelper;
 import com.qworks.workflow.mapper.ProcessMapper;
 import com.qworks.workflow.repository.ProcessRepository;
 import com.qworks.workflow.repository.WorkflowRepository;
 import com.qworks.workflow.service.ProcessService;
-import com.qworks.workflow.service.WorkflowNodeConfigurationService;
+import com.qworks.workflow.service.WorkflowNodeService;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
 import static com.qworks.workflow.constants.WorkflowConstants.ADMIN_USER;
 import static com.qworks.workflow.constants.WorkflowConstants.END_NODE;
@@ -44,7 +49,7 @@ public class ProcessServiceImpl implements ProcessService {
 
     private final ProcessMapper processMapper;
 
-    private final WorkflowNodeConfigurationService workflowNodeConfigurationService;
+    private final WorkflowNodeService workflowNodeService;
 
     @Override
     public Page<ProcessDto> findAll(Pageable pageable) {
@@ -140,7 +145,7 @@ public class ProcessServiceImpl implements ProcessService {
 
     private String getDisplayName(UpdateProcessRequest request) {
         try {
-            WorkflowNodeConfigurationDto nodeConfigurationDto = this.workflowNodeConfigurationService.findByNodeId(request.nodeId());
+            WorkflowNodeDto nodeConfigurationDto = this.workflowNodeService.findByNodeId(request.nodeId());
             return StringUtils.isEmpty(nodeConfigurationDto.getDisplayName()) ? request.activityName() : nodeConfigurationDto.getDisplayName();
         } catch (Exception e) {
             return request.activityName();

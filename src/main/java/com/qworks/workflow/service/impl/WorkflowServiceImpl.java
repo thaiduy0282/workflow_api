@@ -164,6 +164,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     addExecutionListener(preEndStep);
                     flowNodeMap.put(node.getId(), preEndStep);
                     String endActivityName = "End";
+
                     EndEvent endEventNode = createElement(process, endStepId, EndEvent.class);
                     endEventNode.setName(endActivityName);
                     Edge edge = new Edge();

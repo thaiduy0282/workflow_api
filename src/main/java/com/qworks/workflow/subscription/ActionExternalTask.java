@@ -3,11 +3,11 @@ package com.qworks.workflow.subscription;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qworks.workflow.dto.WorkflowNodeConfigurationDto;
+import com.qworks.workflow.dto.WorkflowNodeDto;
 import com.qworks.workflow.dto.WorkflowTriggerConfigurationDto;
 import com.qworks.workflow.enums.EventCategory;
 import com.qworks.workflow.exception.SystemErrorException;
-import com.qworks.workflow.service.WorkflowNodeConfigurationService;
+import com.qworks.workflow.service.WorkflowNodeService;
 import lombok.RequiredArgsConstructor;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
@@ -42,7 +42,7 @@ public class ActionExternalTask implements ExternalTaskHandler {
     private final static Logger LOGGER = Logger.getLogger(ActionExternalTask.class.getName());
     private final static String BASE_URL = "https://dev.qworks.ai/metabench/api/";
 
-    private final WorkflowNodeConfigurationService workflowNodeConfigurationService;
+    private final WorkflowNodeService workflowNodeService;
 
     @Override
     public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
@@ -51,7 +51,7 @@ public class ActionExternalTask implements ExternalTaskHandler {
         LOGGER.info("==========================================================");
         LOGGER.info(workflowId + " - Start handling the action");
 
-        WorkflowNodeConfigurationDto configurationDto = this.workflowNodeConfigurationService.findByWorkflowIdAndNodeId(workflowId, nodeId);
+        WorkflowNodeDto configurationDto = this.workflowNodeService.findByWorkflowIdAndNodeId(workflowId, nodeId);
         String triggerData = (String) externalTask.getVariable("triggerData");
 
         // Update account info
@@ -76,7 +76,7 @@ public class ActionExternalTask implements ExternalTaskHandler {
         externalTaskService.complete(externalTask, result);
     }
 
-    private Boolean handleAction(String triggerData, WorkflowNodeConfigurationDto configurationDto) throws JsonProcessingException, KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
+    private Boolean handleAction(String triggerData, WorkflowNodeDto configurationDto) throws JsonProcessingException, KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
         if (configurationDto.getAction().getActionType().equals("Update data")) {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode triggerDataObj = mapper.readTree(triggerData);
@@ -100,7 +100,7 @@ public class ActionExternalTask implements ExternalTaskHandler {
         return true;
     }
 
-    private String generateBodyJson(String id, WorkflowNodeConfigurationDto configurationDto) {
+    private String generateBodyJson(String id, WorkflowNodeDto configurationDto) {
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("id", id);
         configurationDto.getAction().getFields().forEach(field -> {

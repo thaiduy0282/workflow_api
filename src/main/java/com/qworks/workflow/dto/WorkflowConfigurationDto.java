@@ -1,15 +1,16 @@
 package com.qworks.workflow.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 
 import java.util.Date;
-import java.util.List;
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -17,26 +18,15 @@ import java.util.UUID;
 @NoArgsConstructor
 @SuperBuilder(toBuilder = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class WorkflowNodeConfigurationDto {
-
+public class WorkflowConfigurationDto {
     @Id
     private String id;
 
-    private String workflowId;
+    private String key;
 
-    private String displayName;
+    private String description;
 
-    private String nodeId;
-
-    private WorkflowTriggerConfigurationDto triggerConfiguration;
-
-    private WorkflowConditionExpressionDto condition;
-
-    private WorkflowActionConfigurationDto action;
-
-    private WorkflowErrorConfigurationDto errorConfiguration;
-
-    private UUID createdBy;
+    private Object value;
 
     @CreatedDate
     private Date createdDate;

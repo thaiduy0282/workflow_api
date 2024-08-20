@@ -1,6 +1,6 @@
 package com.qworks.workflow.subscription;
 
-import com.qworks.workflow.service.WorkflowNodeConfigurationService;
+import com.qworks.workflow.service.WorkflowNodeService;
 import lombok.RequiredArgsConstructor;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
@@ -19,7 +19,7 @@ public class PreCompleteExternalTask implements ExternalTaskHandler {
 
     private final static Logger LOGGER = Logger.getLogger(PreCompleteExternalTask.class.getName());
 
-    private final WorkflowNodeConfigurationService workflowNodeConfigurationService;
+    private final WorkflowNodeService workflowNodeService;
 
     @Override
     public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {

@@ -17,13 +17,13 @@ import org.springframework.data.annotation.LastModifiedDate;
 import java.util.Date;
 import java.util.UUID;
 
-@Container(containerName = "node-configurations")
+@Container(containerName = "workflow-nodes")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder(toBuilder = true)
-public class WorkflowNodeConfigurationEntity {
+public class WorkflowNodeEntity {
 
     @Id
     private String id;

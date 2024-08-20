@@ -3,17 +3,14 @@ package com.qworks.workflow.subscription;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qworks.workflow.dto.WorkflowConditionExpressionDto;
-import com.qworks.workflow.dto.WorkflowNodeConfigurationDto;
-import com.qworks.workflow.service.WorkflowNodeConfigurationService;
+import com.qworks.workflow.dto.WorkflowNodeDto;
+import com.qworks.workflow.service.WorkflowNodeService;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
-import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
@@ -33,7 +30,7 @@ public class ConditionExternalTask implements ExternalTaskHandler {
     private final static Logger LOGGER = Logger.getLogger(ConditionExternalTask.class.getName());
 
     @Autowired
-    private WorkflowNodeConfigurationService workflowNodeConfigurationService;
+    private WorkflowNodeService workflowNodeService;
 
     @Override
     public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
@@ -42,7 +39,7 @@ public class ConditionExternalTask implements ExternalTaskHandler {
         LOGGER.info("==========================================================");
         LOGGER.info(workflowId + " - Start checking the conditions");
 
-        WorkflowNodeConfigurationDto configurationDto = this.workflowNodeConfigurationService.findByWorkflowIdAndNodeId(workflowId, nodeId);
+        WorkflowNodeDto configurationDto = this.workflowNodeService.findByWorkflowIdAndNodeId(workflowId, nodeId);
         String triggerData = externalTask.getVariable("triggerData");
         ObjectMapper mapper = new ObjectMapper();
 
@@ -67,7 +64,7 @@ public class ConditionExternalTask implements ExternalTaskHandler {
         externalTaskService.complete(externalTask, Collections.singletonMap("isTrue", isTrueCase));
     }
 
-    private Boolean evaluateConditions(WorkflowNodeConfigurationDto configurationDto, JsonNode actualData) {
+    private Boolean evaluateConditions(WorkflowNodeDto configurationDto, JsonNode actualData) {
         Boolean isPassed = false;
         WorkflowConditionExpressionDto condition = configurationDto.getCondition();
         Map<String, Object> myVariables = new HashMap<>();
