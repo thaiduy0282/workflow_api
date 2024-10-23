@@ -3,8 +3,10 @@ package com.qworks.workflow.controller;
 import com.qworks.workflow.dto.WorkflowNodeDto;
 import com.qworks.workflow.dto.request.CreateWorkflowNodeRequest;
 import com.qworks.workflow.dto.response.ApiResponse;
+import com.qworks.workflow.exception.model.SuccessResponse;
 import com.qworks.workflow.service.WorkflowNodeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,5 +35,15 @@ public class WorkflowNodeController {
     public ResponseEntity<List<WorkflowNodeDto>> createWorkflowNodeConfiguration(@PathVariable String workflowId, @RequestBody CreateWorkflowNodeRequest request) {
         List<WorkflowNodeDto> nodeConfigurationDtos = workflowNodeService.create(workflowId, request);
         return ResponseEntity.ok(nodeConfigurationDtos);
+    }
+
+    @DeleteMapping()
+    public ResponseEntity<SuccessResponse> deleteAllNodes() {
+        workflowNodeService.deleteAllNodes();
+        SuccessResponse response = SuccessResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message("All node configurations were deleted successfully..!")
+                .build();
+        return ResponseEntity.ok(response);
     }
 }

@@ -4,6 +4,7 @@ import com.qworks.workflow.dto.Edge;
 import com.qworks.workflow.dto.Node;
 import com.qworks.workflow.dto.WorkflowDto;
 import com.qworks.workflow.dto.request.CreateWorkflowRequest;
+import com.qworks.workflow.dto.request.ManualTriggerRequest;
 import com.qworks.workflow.dto.request.UpdateWorkflowRequest;
 import com.qworks.workflow.exception.BPMNException;
 import org.camunda.community.rest.client.invoker.ApiException;
@@ -32,4 +33,7 @@ public interface WorkflowService {
 
     void publishWorkflow(String workflowId, boolean isPublished) throws BPMNException;
 
+    List<String> manualTrigger(ManualTriggerRequest request);
+
+    void deleteAllWorkflows();
 }

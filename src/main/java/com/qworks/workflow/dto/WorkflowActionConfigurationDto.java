@@ -21,5 +21,7 @@ public class WorkflowActionConfigurationDto {
 
     private String actionType;
 
+    private String object;
+
     private List<WorkflowActionConfigurationFieldDto> fields;
 }

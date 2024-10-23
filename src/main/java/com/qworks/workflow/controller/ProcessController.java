@@ -33,6 +33,7 @@ public class ProcessController {
 
     @PostMapping("/trigger/{processName}")
     public ResponseEntity<SuccessResponse> triggerWorkflow(@PathVariable String processName, @RequestBody TriggerProcessRequest request) throws ApiException {
+        //This method is using for testing purpose only
         Map<String, VariableValueDto> variables = new HashMap<>();
         //Handle event for account event
         String jsonRecord = "{ \"annualrevenue\": 4545654.0, \"employeescount\": 55, \"isactive\": true, \"islatest\": true, \"createddate\": 1715947270671, \"lastmodifieddate\": 1715947695805, \"businessactivities\": \"Activities..\", \"communicationpreferences\": \"Preferences!!\", \"accountlogourl\": \"https://account.com\", \"accountmanager\": null, \"accountnumber\": \"123456\", \"accountsource\": \"Referral\", \"accountstatus\": null, \"accounttype\": \"Partner\", \"accountwebsite\": \"https://account.com\", \"createdby\": null, \"credithold\": \"Billing\", \"note\": \"Account1 - appended note from API\", \"id\": \"75b85915-bf80-4fb7-8b85-ee3ce9128f5a\", \"industry\": \"Agriculture\", \"jurisdiction\": \"CA\", \"lastmodifiedby\": \"naresh@qworks.ai\", \"name\": \"Account1\", \"ownerid\": \"3999ac44-cb85-4931-bf49-d7b10e8bc6fc\", \"parentaccountid\": \"54b16c4a-a589-4f88-985b-0468f75d5c7d\", \"partnertype\": \"Direct Reseller\", \"qwextid\": null, \"shippinghold\": \"New Order\", \"status\": \"account_status_active\", \"tags\": \"[]\", \"taxidregistrationnumber\": \"4589-545\", \"tenantid\": null, \"ownername\": \"Naresh Bachu\", \"parentaccountname\": \"Microsoft\", \"customfields\": null, \"isroot\": null, \"territoryid\": null }";
@@ -77,8 +78,18 @@ public class ProcessController {
         processService.deleteProcess(id);
         SuccessResponse response = SuccessResponse.builder()
                 .status(HttpStatus.OK.value())
-                .message("Workflow is triggered successfully..!")
+                .message("Process data was deleted successfully..!")
                 .data(id)
+                .build();
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping()
+    public ResponseEntity<SuccessResponse> deleteAllProcesses() {
+        processService.deleteAllProcesses();
+        SuccessResponse response = SuccessResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message("All process data was deleted successfully!")
                 .build();
         return ResponseEntity.ok(response);
     }

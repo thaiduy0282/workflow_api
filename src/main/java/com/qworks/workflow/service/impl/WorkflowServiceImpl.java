@@ -9,6 +9,8 @@ import com.qworks.workflow.dto.Edge;
 import com.qworks.workflow.dto.Node;
 import com.qworks.workflow.dto.WorkflowDto;
 import com.qworks.workflow.dto.request.CreateWorkflowRequest;
+import com.qworks.workflow.dto.request.ManualTriggerRequest;
+import com.qworks.workflow.dto.request.TriggerProcessRequest;
 import com.qworks.workflow.dto.request.UpdateWorkflowRequest;
 import com.qworks.workflow.entity.WorkflowEntity;
 import com.qworks.workflow.enums.NodeType;
@@ -20,10 +22,13 @@ import com.qworks.workflow.exception.SystemErrorException;
 import com.qworks.workflow.helper.LinkHelper;
 import com.qworks.workflow.mapper.WorkflowMapper;
 import com.qworks.workflow.repository.WorkflowRepository;
+import com.qworks.workflow.service.ProcessService;
+import com.qworks.workflow.service.WorkflowNodeService;
 import com.qworks.workflow.service.WorkflowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelException;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
@@ -41,27 +46,46 @@ import org.camunda.bpm.model.bpmn.instance.camunda.CamundaExecutionListener;
 import org.camunda.bpm.model.xml.ModelValidationException;
 import org.camunda.community.rest.client.api.DeploymentApi;
 import org.camunda.community.rest.client.dto.DeploymentWithDefinitionsDto;
+import org.camunda.community.rest.client.dto.ProcessInstanceWithVariablesDto;
+import org.camunda.community.rest.client.dto.VariableValueDto;
 import org.camunda.community.rest.client.invoker.ApiException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
+import static com.qworks.workflow.constants.WorkflowConstants.ALLOWED_TRIGGER_OBJECTS;
+import static com.qworks.workflow.constants.WorkflowConstants.DATA;
 import static com.qworks.workflow.constants.WorkflowConstants.NODE_ID_PREFIX;
+import static com.qworks.workflow.util.RestTemplateUtil.getHttpHeaders;
+import static com.qworks.workflow.util.RestTemplateUtil.getRequestFactory;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class WorkflowServiceImpl implements WorkflowService {
 
+    @Value("${qworks.baseUrl}")
+    private String baseUrl;
     private final WorkflowRepository workflowRepository;
     private final WorkflowMapper workflowMapper;
     private final ObjectMapper objectMapper;
     private final DeploymentApi deploymentApi;
+
+    private final WorkflowNodeService workflowNodeService;
+
+    private final ProcessService processService;
+
 
     @Override
     public Page<WorkflowDto> findAll(Pageable pageable) {
@@ -97,6 +121,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         workflowEntity.setEdges(convertToJsonString(request.edges()));
         workflowEntity.setCreatedDate(new Date());
         workflowEntity.setLastModifiedDate(new Date());
+        workflowEntity.setStatus(WorkflowStatus.DRAFT);
         workflowEntity = workflowRepository.save(workflowEntity);
         return workflowMapper.toWorkflowDto(workflowEntity);
     }
@@ -116,8 +141,8 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     @Override
     public void delete(String id) {
-        WorkflowEntity existingWorkflow = getWorkflowById(id);
-        workflowRepository.deleteById(existingWorkflow.getId());
+        workflowNodeService.deleteByWorkflowId(id);
+        workflowRepository.deleteById(id);
     }
 
     @Override
@@ -128,7 +153,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     @Transactional
     public File generateBPMNProcess(WorkflowDto workflowDto, List<Node> nodes, List<Edge> edges) throws Exception {
-        BpmnModelInstance modelInstance = Bpmn.createExecutableProcess("test").executable().done();
+        BpmnModelInstance modelInstance = Bpmn.createExecutableProcess("executableProcess").executable().done();
         Definitions definitions = modelInstance.newInstance(Definitions.class);
         definitions.setTargetNamespace("http://camunda.org/examples");
         modelInstance.setDefinitions(definitions);
@@ -294,6 +319,80 @@ public class WorkflowServiceImpl implements WorkflowService {
         log.info("Workflow is published successfully!!" + workflowId);
         workflowDto.setStatus(WorkflowStatus.PUBLISHED);
         saveWorkflow(workflowDto);
+    }
+
+    @Override
+    public List<String> manualTrigger(ManualTriggerRequest request) {
+        List<String> processesIds = new ArrayList<>();
+        if (ALLOWED_TRIGGER_OBJECTS.contains(request.object())) {
+            JsonNode apiResponse = callApiWithTimestamp(request.object(), request.lastModifiedDate());
+            if (apiResponse != null) {
+                List<String> configurations = workflowNodeService.getUniqueWorkflowIdBaseOnTriggerObject(request.object());
+                if (configurations.isEmpty()) {
+                    log.info("No workflows are configured with the trigger object {} then skipped it", request.object());
+                    return processesIds;
+                }
+
+                log.info("Found {} workflows with trigger object {}: {}", configurations.size(), request.object(), StringUtils.join(configurations));
+                configurations.forEach(workflowId -> {
+                    processesIds.addAll(triggerProcess(workflowId, request.object(), apiResponse));
+                });
+            }
+        } else {
+            log.info("The workflow app does not support this trigger object {} for {}", request.object(), request.lastModifiedDate());
+        }
+
+        return processesIds;
+    }
+
+    @Override
+    public void deleteAllWorkflows() {
+        workflowRepository.deleteAll();
+        workflowNodeService.deleteAllNodes();
+    }
+
+    private JsonNode callApiWithTimestamp(String triggerObject, long timestamp) {
+        log.info("Fetching the list of {} objects that were updated within the specified timestamp: {}", triggerObject, timestamp);
+        String apiUrl = baseUrl + "metabench/fetchRecords/" + triggerObject;
+        RestTemplate restTemplate = new RestTemplate(getRequestFactory());
+        try {
+            HttpHeaders headers = getHttpHeaders();
+            String json = "{ \"lastmodifieddate\": " + timestamp + " }";
+            HttpEntity<String> entity = new HttpEntity<String>(json, headers);
+            ResponseEntity<JsonNode> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, JsonNode.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("API response: " + response.getBody());
+                return response.getBody();
+            } else {
+                log.error("Unexpected code {} returning while calling the API to fetch {} objects updated within the specified timestamp: {} ", response.getStatusCode(), triggerObject, timestamp);
+            }
+        } catch(HttpStatusCodeException e) {
+            log.error("An error occurred while calling the API to fetch {} objects updated within the specified timestamp: {}", triggerObject, timestamp, e);
+        }
+
+        return null;
+    }
+
+    private List<String> triggerProcess(String workflowId, String object, JsonNode apiResponse) {
+        List<String> processesIds = new ArrayList<>();
+        try {
+            JsonNode dataArrNode = apiResponse.path(DATA);
+            if (dataArrNode.isArray() && dataArrNode.size() > 0) {
+                for (JsonNode childNode : dataArrNode) {
+                    Map<String, VariableValueDto> variables = new HashMap<>();
+                    variables.put(StringUtils.lowerCase(object), new VariableValueDto().value(childNode.toString()).type("string"));
+                    log.info("Executing workflow {} with data: {}", workflowId, childNode.toString());
+                    ProcessInstanceWithVariablesDto res = processService.triggerProcess("definition_" + workflowId, variables, new TriggerProcessRequest(""));
+                    processesIds.add(res.getId());
+                }
+            } else {
+                log.info("No data was returned from the QWorks system to initiate the workflow {}", workflowId);
+            }
+        } catch (Exception e) {
+            log.error("Error initiating process for workflowId {}: ", workflowId, e);
+        }
+
+        return processesIds;
     }
 
 

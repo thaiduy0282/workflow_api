@@ -6,5 +6,5 @@ import java.util.List;
 
 public record CreateWorkflowNodeRequest(
 
-        List<WorkflowNodeDto> nodes
+        List<WorkflowNodeDto> nodeConfigurations
 ) { }

@@ -20,6 +20,11 @@ public interface WorkflowNodeService {
 
     List<WorkflowNodeDto> create(String workflowId, CreateWorkflowNodeRequest request);
 
-    List<WorkflowNodeEntity> findConfigurationsForUpdateAccount();
+    List<WorkflowNodeEntity> findConfigurationsByTriggerObject(String triggerObject);
 
+    List<String> getUniqueWorkflowIdBaseOnTriggerObject(String triggerObject);
+
+    void deleteAllNodes();
+
+    void deleteByWorkflowId(String workflowId);
 }

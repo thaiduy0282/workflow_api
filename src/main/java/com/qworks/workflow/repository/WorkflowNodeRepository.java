@@ -21,7 +21,6 @@ public interface WorkflowNodeRepository extends CosmosRepository<WorkflowNodeEnt
 
     void deleteAllByWorkflowId(String workflowId);
 
-    List<WorkflowNodeEntity> findByTriggerConfigurationCategoryAndTriggerConfigurationProviderAndTriggerConfigurationEventTopic(
-            String category, String provider, String eventTopic);
+    List<WorkflowNodeEntity> findByTriggerConfiguration_CategoryAndTriggerConfiguration_EventTopic(String category, String eventTopic);
 
 }

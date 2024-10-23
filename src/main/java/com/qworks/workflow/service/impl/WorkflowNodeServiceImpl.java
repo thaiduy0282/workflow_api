@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -69,7 +71,7 @@ public class WorkflowNodeServiceImpl implements WorkflowNodeService {
         workflowNodeRepository.deleteAllByWorkflowId(workflowId);
 
         List<WorkflowNodeDto> nodeConfigurationDtos = new ArrayList<>();
-        request.nodes().forEach(nodeConfiguration -> {
+        request.nodeConfigurations().forEach(nodeConfiguration -> {
             WorkflowNodeEntity workflowNodeEntity = workflowNodeMapper.toWorkflowConditionEntity(nodeConfiguration);
             workflowNodeEntity.setId(UUID.randomUUID().toString());
             workflowNodeEntity.setWorkflowId(workflowId);
@@ -82,9 +84,26 @@ public class WorkflowNodeServiceImpl implements WorkflowNodeService {
     }
 
     @Override
-    public List<WorkflowNodeEntity> findConfigurationsForUpdateAccount() {
-        return workflowNodeRepository
-                .findByTriggerConfigurationCategoryAndTriggerConfigurationProviderAndTriggerConfigurationEventTopic(
-                        "QWORKS", "AKKA", "ACCOUNT_EVENT");
+    public List<WorkflowNodeEntity> findConfigurationsByTriggerObject(String triggerObject) {
+        return workflowNodeRepository.findByTriggerConfiguration_CategoryAndTriggerConfiguration_EventTopic("QWORKS", triggerObject);
+    }
+
+    @Override
+    public List<String> getUniqueWorkflowIdBaseOnTriggerObject(String triggerObject) {
+        List<WorkflowNodeEntity> workflowNodeEntities = workflowNodeRepository.findByTriggerConfiguration_CategoryAndTriggerConfiguration_EventTopic("QWORKS", triggerObject);
+        Set<String> uniqueWorkflowIds = new HashSet<>();
+        workflowNodeEntities.forEach(workflowNodeEntity -> uniqueWorkflowIds.add(workflowNodeEntity.getWorkflowId()));
+
+        return new ArrayList<>(uniqueWorkflowIds);
+    }
+
+    @Override
+    public void deleteAllNodes() {
+        workflowNodeRepository.deleteAll();
+    }
+
+    @Override
+    public void deleteByWorkflowId(String workflowId) {
+        workflowNodeRepository.deleteAllByWorkflowId(workflowId);
     }
 }

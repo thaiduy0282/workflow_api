@@ -55,6 +55,8 @@ public class Data {
 
     private String expression;
 
+    private String object;
+
     private List<JsonNode> fields;
 
     private List<JsonNode> referenceObjects;

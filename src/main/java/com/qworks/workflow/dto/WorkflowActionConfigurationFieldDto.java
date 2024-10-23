@@ -21,4 +21,6 @@ public class WorkflowActionConfigurationFieldDto {
     private String key;
 
     private String newValue;
+
+    private String object;
 }

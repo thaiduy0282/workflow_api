@@ -37,7 +37,7 @@ services:
       - workflow-network
 
   akka-message:
-    image: ktdung0801/akka-message:latest
+    image: thaiduy0282/akka-message:latest
     container_name: akka-message
     ports:
       - "8085:8085"
@@ -55,8 +55,8 @@ services:
     ports:
       - "8090:8090"
     depends_on:
-      - mongodb
       - camunda
+      - akka-message
     environment:
       SERVER_PORT: 8090
       AZURE_COSMOS_URI: https://qworks-workflow.documents.azure.com:443

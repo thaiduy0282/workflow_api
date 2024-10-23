@@ -58,7 +58,7 @@ public class ProcessServiceImpl implements ProcessService {
     }
 
     @Override
-    public void triggerProcess(String processName, Map<String, VariableValueDto> variables, TriggerProcessRequest triggerProcessRequest) throws ApiException {
+    public ProcessInstanceWithVariablesDto triggerProcess(String processName, Map<String, VariableValueDto> variables, TriggerProcessRequest triggerProcessRequest) throws ApiException {
         var workflowEntity = workflowRepository.findByProcessDefinitionId(processName)
                 .orElseThrow(() -> new ResourceNotFoundException("Workflow not found with processDefinitionId: " + processName));
 
@@ -80,7 +80,7 @@ public class ProcessServiceImpl implements ProcessService {
         processEntity.setDetails(Collections.EMPTY_LIST);
         processRepository.save(processEntity);
 
-        ProcessInstanceWithVariablesDto processInstanceWithVariablesDto = processDefinitionApi.startProcessInstanceByKey(
+        return processDefinitionApi.startProcessInstanceByKey(
                 processName,
                 startProcessInstanceDto
         );
@@ -141,6 +141,11 @@ public class ProcessServiceImpl implements ProcessService {
         }
 
         return processRepository.save(processEntity);
+    }
+
+    @Override
+    public void deleteAllProcesses() {
+        processRepository.deleteAll();
     }
 
     private String getDisplayName(UpdateProcessRequest request) {

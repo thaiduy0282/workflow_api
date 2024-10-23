@@ -17,15 +17,15 @@ import java.util.logging.Logger;
 @RequiredArgsConstructor
 public class PreCompleteExternalTask implements ExternalTaskHandler {
 
-    private final static Logger LOGGER = Logger.getLogger(PreCompleteExternalTask.class.getName());
+    private final static Logger logger = Logger.getLogger(PreCompleteExternalTask.class.getName());
 
     private final WorkflowNodeService workflowNodeService;
 
     @Override
     public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
         String workflowId = externalTask.getProcessDefinitionKey().split("_")[1];
-        LOGGER.info("==========================================================");
-        LOGGER.info(workflowId + " - Completed successfully");
+        logger.info("==========================================================");
+        logger.info(workflowId + " - Completed successfully");
 
         // Complete the task
         externalTaskService.complete(externalTask);
