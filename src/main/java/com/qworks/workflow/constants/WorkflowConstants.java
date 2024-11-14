@@ -30,6 +30,8 @@ public class WorkflowConstants {
 
     public static final String DATA = "data";
 
+    public static final String PROCESS_VARIABLE_REDIS_KEY_PREFIX = "process:variables:";
+
     public static final List<String> ALLOWED_TRIGGER_OBJECTS = Arrays.asList(ACCOUNT, CONTRACT, QUOTE);
 
 }

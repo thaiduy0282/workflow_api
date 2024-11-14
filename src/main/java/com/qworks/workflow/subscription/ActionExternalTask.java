@@ -5,9 +5,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qworks.workflow.dto.WorkflowActionConfigurationDto;
 import com.qworks.workflow.dto.WorkflowNodeDto;
-import com.qworks.workflow.dto.WorkflowTriggerConfigurationDto;
 import com.qworks.workflow.service.WorkflowNodeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.core5.http.HttpException;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
@@ -16,26 +16,19 @@ import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Logger;
 
-import static com.qworks.workflow.constants.WorkflowConstants.ACTION_GET;
-import static com.qworks.workflow.constants.WorkflowConstants.ACTION_UPDATE;
-import static com.qworks.workflow.constants.WorkflowConstants.DATA;
-import static com.qworks.workflow.constants.WorkflowConstants.ID;
+import static com.qworks.workflow.constants.WorkflowConstants.*;
 import static com.qworks.workflow.util.JsonUtil.generateBodyJson;
 import static com.qworks.workflow.util.JsonUtil.generateBodyJsonForUpdateAction;
 import static com.qworks.workflow.util.RestTemplateUtil.getHttpHeaders;
@@ -46,54 +39,65 @@ import static com.qworks.workflow.util.RestTemplateUtil.getRequestFactory;
 @ComponentScan("com.qworks.workflow.service")
 @ExternalTaskSubscription("action_task")
 @RequiredArgsConstructor
+@Slf4j
 public class ActionExternalTask implements ExternalTaskHandler {
-
-    private final static Logger logger = Logger.getLogger(ActionExternalTask.class.getName());
 
     @Value("${qworks.baseUrl}")
     private String baseUrl;
 
     private final WorkflowNodeService workflowNodeService;
 
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    private final ObjectMapper objectMapper;
+
     @Override
     public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
         String nodeId = externalTask.getActivityId();
         String workflowId = externalTask.getProcessDefinitionKey().split("_")[1];
-        logger.info("==========================================================");
-        logger.info(workflowId + " - Start handling the action");
+        log.info("==========================================================");
+        log.info(workflowId + " - Start handling the action");
 
         WorkflowNodeDto configurationDto = this.workflowNodeService.findByWorkflowIdAndNodeId(workflowId, nodeId);
 
-        Boolean isSuccess = null;
+        Boolean isSuccess;
         try {
-            isSuccess = handleAction(externalTask, externalTaskService, configurationDto);
-        } catch (JsonProcessingException | KeyStoreException | NoSuchAlgorithmException | KeyManagementException | HttpException e) {
-            logger.info("Occurred an error while handle the action: " + e.getMessage());
+            isSuccess = handleAction(externalTask, configurationDto);
+        } catch (JsonProcessingException | HttpException e) {
+            log.info("Occurred an error while handle the action: " + e.getMessage());
             externalTaskService.handleBpmnError(externalTask, "errorInAction", "Occurred an error while handle the action");
             return;
         }
 
-        // Complete the task
         Map<String, Object> result = new HashMap<>();
         result.put("isError", !isSuccess);
-        if (!isSuccess) {
+        if (Boolean.FALSE.equals(isSuccess)) {
             result.put("errorInTask", nodeId);
         }
 
-        logger.info(workflowId + " - End handling the action");
-        logger.info("==========================================================");
-        externalTaskService.complete(externalTask, result);
+        log.info(workflowId + " - End handling the action");
+        log.info("==========================================================");
+
+        String redisKey = PROCESS_VARIABLE_REDIS_KEY_PREFIX + externalTask.getProcessInstanceId();
+        redisTemplate.opsForHash().putAll(redisKey, result);
+
+        externalTaskService.complete(externalTask);
     }
 
-    private Boolean handleAction(ExternalTask externalTask, ExternalTaskService externalTaskService, WorkflowNodeDto configurationDto)
-            throws JsonProcessingException, KeyStoreException, NoSuchAlgorithmException, KeyManagementException, HttpException {
+    private Boolean handleAction(ExternalTask externalTask, WorkflowNodeDto configurationDto) throws JsonProcessingException, HttpException {
         WorkflowActionConfigurationDto actionConfigurationDto = configurationDto.getAction();
-        ObjectMapper mapper = new ObjectMapper();
 
         if (actionConfigurationDto.getActionType().equals(ACTION_UPDATE)) {
-            String triggerData = externalTask.getVariable(StringUtils.lowerCase(actionConfigurationDto.getObject()));
-            JsonNode triggerDataObj = mapper.readTree(triggerData);
-            if (triggerDataObj.isArray() && triggerDataObj.size() > 0) {
+            String redisKey = PROCESS_VARIABLE_REDIS_KEY_PREFIX + externalTask.getProcessInstanceId();
+            String variableName = StringUtils.lowerCase(actionConfigurationDto.getObject());
+            String triggerData = (String) redisTemplate.opsForHash().get(redisKey, variableName);
+
+            if (triggerData == null) {
+                throw new IllegalStateException("Variable " + variableName + " not found in Redis for key: " + redisKey);
+            }
+
+            JsonNode triggerDataObj = objectMapper.readTree(triggerData);
+            if (triggerDataObj.isArray() && !triggerDataObj.isEmpty()) {
                 for (JsonNode childNode : triggerDataObj) {
                     callUpdateAPI(childNode, actionConfigurationDto);
                 }
@@ -101,9 +105,17 @@ public class ActionExternalTask implements ExternalTaskHandler {
                 callUpdateAPI(triggerDataObj, actionConfigurationDto);
             }
         } else if (actionConfigurationDto.getActionType().equals(ACTION_GET)) {
-            String triggerData = externalTask.getVariable(StringUtils.lowerCase(configurationDto.getTriggerConfiguration().getEventTopic()));
-            JsonNode triggerDataObj = mapper.readTree(triggerData);
-            callGetAPI(externalTask, externalTaskService, triggerDataObj, actionConfigurationDto);
+
+            String redisKey = PROCESS_VARIABLE_REDIS_KEY_PREFIX + externalTask.getProcessInstanceId();
+            String variableName = StringUtils.lowerCase(configurationDto.getTriggerConfiguration().getEventTopic());
+            String triggerData = (String) redisTemplate.opsForHash().get(redisKey, variableName);
+
+            if (triggerData == null) {
+                throw new IllegalStateException("Variable " + variableName + " not found in Redis for key: " + redisKey);
+            }
+
+            JsonNode triggerDataObj = objectMapper.readTree(triggerData);
+            callGetAPI(externalTask, triggerDataObj, actionConfigurationDto);
         }
 
         return true;
@@ -113,11 +125,10 @@ public class ActionExternalTask implements ExternalTaskHandler {
         String id = String.valueOf(triggerDataObj.get(ID).asText());
         String jsonBody = generateBodyJsonForUpdateAction(id, actionConfigurationDto);
         String url = this.baseUrl + "metabench/standard?apiName=" + actionConfigurationDto.getObject();
-        logger.info("Executing update action with API" + url + " for the body: " + jsonBody);
+        log.info("Executing update action with API" + url + " for the body: " + jsonBody);
         RestTemplate restTemplate = new RestTemplate(getRequestFactory());
         try {
-            HttpHeaders headers = getHttpHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+            HttpEntity<String> entity = new HttpEntity<>(jsonBody, getHttpHeaders());
             ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new HttpException();
@@ -127,27 +138,28 @@ public class ActionExternalTask implements ExternalTaskHandler {
         }
     }
 
-    private void callGetAPI(ExternalTask externalTask, ExternalTaskService externalTaskService, JsonNode triggerDataObj,
+    private void callGetAPI(ExternalTask externalTask, JsonNode triggerDataObj,
                             WorkflowActionConfigurationDto actionConfigurationDto) throws HttpException {
         try {
             RestTemplate restTemplate = new RestTemplate(getRequestFactory());
             String jsonBody = generateBodyJson(triggerDataObj, actionConfigurationDto);
             String url = this.baseUrl + "metabench/fetchRecords/" + actionConfigurationDto.getObject() ;
-            HttpHeaders headers = getHttpHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+            HttpEntity<String> entity = new HttpEntity<>(jsonBody, getHttpHeaders());
             ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
+
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new HttpException();
             }
 
             JsonNode dataArrNode = Objects.requireNonNull(response.getBody()).path(DATA);
-            if (dataArrNode.isArray() && dataArrNode.size() > 0) {
-                logger.info("Found " + dataArrNode.size() + " items in this get request");
-                Map<String, Object> variables = externalTask.getAllVariables();
-                variables.put(StringUtils.lowerCase(actionConfigurationDto.getObject()), dataArrNode.toString());
-                externalTaskService.setVariables(externalTask.getProcessInstanceId(), variables);
+            if (dataArrNode.isArray() && !dataArrNode.isArray()) {
+                log.info("Found " + dataArrNode.size() + " items in this get request");
+
+                String redisKey = PROCESS_VARIABLE_REDIS_KEY_PREFIX + externalTask.getProcessInstanceId();
+                String variableName = StringUtils.lowerCase(actionConfigurationDto.getObject());
+                redisTemplate.opsForHash().put(redisKey, variableName, dataArrNode.toString());
             } else {
-                logger.info("No data was returned from the QWorks system to initiate the workflow");
+                log.info("No data was returned from the QWorks system to initiate the workflow");
             }
         } catch(HttpStatusCodeException e) {
             throw e;

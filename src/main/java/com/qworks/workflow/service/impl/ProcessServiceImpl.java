@@ -1,5 +1,6 @@
 package com.qworks.workflow.service.impl;
 
+import com.qworks.workflow.constants.WorkflowConstants;
 import com.qworks.workflow.dto.ProcessDto;
 import com.qworks.workflow.dto.ProcessNodeHistory;
 import com.qworks.workflow.dto.WorkflowNodeDto;
@@ -23,15 +24,10 @@ import org.camunda.community.rest.client.dto.VariableValueDto;
 import org.camunda.community.rest.client.invoker.ApiException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static com.qworks.workflow.constants.WorkflowConstants.ADMIN_USER;
 import static com.qworks.workflow.constants.WorkflowConstants.END_NODE;
@@ -51,6 +47,8 @@ public class ProcessServiceImpl implements ProcessService {
 
     private final WorkflowNodeService workflowNodeService;
 
+    private final RedisTemplate<String, Object> redisTemplate;
+
     @Override
     public Page<ProcessDto> findAll(Pageable pageable) {
         return processRepository.findAll(pageable)
@@ -66,6 +64,14 @@ public class ProcessServiceImpl implements ProcessService {
         variables.put("processInstanceId", new VariableValueDto().value(processInstanceId).type("string"));
 
         StartProcessInstanceDto startProcessInstanceDto = new StartProcessInstanceDto();
+
+        String redisKey = WorkflowConstants.PROCESS_VARIABLE_REDIS_KEY_PREFIX + processInstanceId;
+        Map<String, Object> redisVariables = new HashMap<>();
+        for (Map.Entry<String, VariableValueDto> entry : variables.entrySet()) {
+            redisVariables.put(entry.getKey(), entry.getValue().getValue());
+        }
+        redisTemplate.opsForHash().putAll(redisKey, redisVariables);
+
         startProcessInstanceDto.setVariables(variables);
 
         var processEntity = new ProcessEntity();

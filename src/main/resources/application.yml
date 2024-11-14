@@ -9,6 +9,10 @@ spring:
       key: ${AZURE_COSMOS_KEY}
       database: ${AZURE_COSMOS_DATABASE:workflow_management}
       populate-query-metrics: ${AZURE_COSMOS_QUERY_METRICS:false}
+    # todo: temp
+    redis:
+      host: localhost
+      port: 6379
 
 server:
   port: ${SERVER_PORT:8090}
