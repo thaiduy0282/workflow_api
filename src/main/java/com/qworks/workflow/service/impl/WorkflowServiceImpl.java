@@ -1,5 +1,7 @@
 package com.qworks.workflow.service.impl;
 
+import ai.qworks.dao.nontransaction.workflowapi.WorkflowEntity;
+import ai.qworks.enums.workflowapi.WorkflowStatus;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,9 +14,7 @@ import com.qworks.workflow.dto.request.CreateWorkflowRequest;
 import com.qworks.workflow.dto.request.ManualTriggerRequest;
 import com.qworks.workflow.dto.request.TriggerProcessRequest;
 import com.qworks.workflow.dto.request.UpdateWorkflowRequest;
-import com.qworks.workflow.entity.WorkflowEntity;
 import com.qworks.workflow.enums.NodeType;
-import com.qworks.workflow.enums.WorkflowStatus;
 import com.qworks.workflow.exception.BPMNException;
 import com.qworks.workflow.exception.NodeTypeNotSupport;
 import com.qworks.workflow.exception.ResourceNotFoundException;

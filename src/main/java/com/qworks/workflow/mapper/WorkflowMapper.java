@@ -1,9 +1,9 @@
 package com.qworks.workflow.mapper;
 
+import ai.qworks.dao.nontransaction.workflowapi.WorkflowEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qworks.workflow.dto.WorkflowDto;
-import com.qworks.workflow.entity.WorkflowEntity;
 import com.qworks.workflow.exception.SystemErrorException;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

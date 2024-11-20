@@ -1,8 +1,8 @@
 package com.qworks.workflow.service;
 
+import ai.qworks.dao.nontransaction.workflowapi.WorkflowNodeEntity;
 import com.qworks.workflow.dto.WorkflowNodeDto;
 import com.qworks.workflow.dto.request.CreateWorkflowNodeRequest;
-import com.qworks.workflow.entity.WorkflowNodeEntity;
 
 import java.util.List;
 

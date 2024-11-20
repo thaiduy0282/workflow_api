@@ -1,12 +1,12 @@
 package com.qworks.workflow.service.impl;
 
+import ai.qworks.dao.nontransaction.workflowapi.ProcessEntity;
+import ai.qworks.dto.workflowapi.ProcessNodeHistory;
+import ai.qworks.enums.workflowapi.ProcessStatus;
 import com.qworks.workflow.dto.ProcessDto;
-import com.qworks.workflow.dto.ProcessNodeHistory;
 import com.qworks.workflow.dto.WorkflowNodeDto;
 import com.qworks.workflow.dto.request.TriggerProcessRequest;
 import com.qworks.workflow.dto.request.UpdateProcessRequest;
-import com.qworks.workflow.entity.ProcessEntity;
-import com.qworks.workflow.enums.ProcessStatus;
 import com.qworks.workflow.exception.ResourceNotFoundException;
 import com.qworks.workflow.mapper.ProcessMapper;
 import com.qworks.workflow.repository.ProcessRepository;

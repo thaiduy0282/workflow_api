@@ -1,10 +1,10 @@
 package com.qworks.workflow.controller;
 
+import ai.qworks.dao.nontransaction.workflowapi.ProcessEntity;
 import com.qworks.workflow.dto.ProcessDto;
 import com.qworks.workflow.dto.request.TriggerProcessRequest;
 import com.qworks.workflow.dto.request.UpdateProcessRequest;
 import com.qworks.workflow.dto.response.ApiResponse;
-import com.qworks.workflow.entity.ProcessEntity;
 import com.qworks.workflow.exception.model.SuccessResponse;
 import com.qworks.workflow.service.ProcessService;
 import lombok.RequiredArgsConstructor;

@@ -1,7 +1,8 @@
 package com.qworks.workflow.dto;
 
+import ai.qworks.dto.workflowapi.ProcessNodeHistory;
+import ai.qworks.enums.workflowapi.ProcessStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.qworks.workflow.enums.ProcessStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +14,6 @@ import org.springframework.data.annotation.CreatedDate;
 
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 
 @Getter
 @Setter

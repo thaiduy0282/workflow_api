@@ -1,7 +1,7 @@
 package com.qworks.workflow.mapper;
 
+import ai.qworks.dao.nontransaction.workflowapi.ProcessEntity;
 import com.qworks.workflow.dto.ProcessDto;
-import com.qworks.workflow.entity.ProcessEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;

@@ -115,6 +115,13 @@
 			<artifactId>azure-spring-data-cosmos</artifactId>
 			<version>5.15.0</version>
 		</dependency>
+
+		<dependency>
+			<groupId>ai.qworks</groupId>
+			<artifactId>qworks-data-model</artifactId>
+			<version>0.0.2-SNAPSHOT</version>
+			<scope>compile</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

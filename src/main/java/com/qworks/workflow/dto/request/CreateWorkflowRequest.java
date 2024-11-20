@@ -1,7 +1,7 @@
 package com.qworks.workflow.dto.request;
 
+import ai.qworks.enums.workflowapi.WorkflowType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.qworks.workflow.enums.WorkflowType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 

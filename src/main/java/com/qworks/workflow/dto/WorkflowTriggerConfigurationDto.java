@@ -1,8 +1,8 @@
 package com.qworks.workflow.dto;
 
+import ai.qworks.enums.workflowapi.EventCategory;
+import ai.qworks.enums.workflowapi.EventProvider;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.qworks.workflow.enums.EventCategory;
-import com.qworks.workflow.enums.EventProvider;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

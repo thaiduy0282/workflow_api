@@ -1,7 +1,7 @@
 package com.qworks.workflow.repository;
 
+import ai.qworks.dao.nontransaction.workflowapi.WorkflowEntity;
 import com.azure.spring.data.cosmos.repository.CosmosRepository;
-import com.qworks.workflow.entity.WorkflowEntity;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

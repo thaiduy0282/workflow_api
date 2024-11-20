@@ -1,6 +1,6 @@
 package com.qworks.workflow.dto.request;
 
-import com.qworks.workflow.enums.ProcessStatus;
+import ai.qworks.enums.workflowapi.ProcessStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 

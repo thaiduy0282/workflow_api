@@ -1,9 +1,9 @@
 package com.qworks.workflow.service.impl;
 
+import ai.qworks.dao.nontransaction.workflowapi.WorkflowConfigurationEntity;
 import com.qworks.workflow.constants.WorkflowConstants;
 import com.qworks.workflow.dto.WorkflowConfigurationDto;
 import com.qworks.workflow.dto.request.CreateWorkflowConfigurationRequest;
-import com.qworks.workflow.entity.WorkflowConfigurationEntity;
 import com.qworks.workflow.exception.ResourceNotFoundException;
 import com.qworks.workflow.mapper.WorkflowConfigurationMapper;
 import com.qworks.workflow.repository.WorkflowConfigurationRepository;

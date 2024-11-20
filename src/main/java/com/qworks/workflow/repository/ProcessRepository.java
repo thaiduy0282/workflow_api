@@ -1,7 +1,7 @@
 package com.qworks.workflow.repository;
 
+import ai.qworks.dao.nontransaction.workflowapi.ProcessEntity;
 import com.azure.spring.data.cosmos.repository.CosmosRepository;
-import com.qworks.workflow.entity.ProcessEntity;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;

@@ -1,10 +1,10 @@
 package com.qworks.workflow.dto;
 
+import ai.qworks.enums.workflowapi.WorkflowStatus;
+import ai.qworks.enums.workflowapi.WorkflowType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.qworks.workflow.enums.WorkflowStatus;
-import com.qworks.workflow.enums.WorkflowType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
