@@ -1,16 +1,13 @@
 package com.qworks.workflow.subscription;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qworks.workflow.dto.WorkflowConditionExpressionDto;
 import com.qworks.workflow.dto.WorkflowNodeDto;
 import com.qworks.workflow.service.WorkflowNodeService;
 import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
-import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
@@ -28,28 +25,24 @@ import static com.qworks.workflow.util.JsonUtil.extractNodeFromPath;
 @Service
 @ComponentScan("com.qworks.workflow.service")
 @ExternalTaskSubscription("validation_filter")
-public class ConditionExternalTask implements ExternalTaskHandler {
+public class ConditionExternalTask extends BaseExternalTaskHandler {
 
     private final static Logger logger = Logger.getLogger(ConditionExternalTask.class.getName());
 
-    @Autowired
-    private WorkflowNodeService workflowNodeService;
+    public ConditionExternalTask(WorkflowNodeService workflowNodeService) {
+        super(workflowNodeService);
+    }
 
     @Override
-    public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-        String nodeId = externalTask.getActivityId();
-        String workflowId = externalTask.getProcessDefinitionKey().split("_")[1];
+    public void handleTask(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+        String workflowId = getWorkflowId(externalTask);
         logger.info("==========================================================");
         logger.info(workflowId + " - Start checking the conditions");
-
-        WorkflowNodeDto configurationDto = this.workflowNodeService.findByWorkflowIdAndNodeId(workflowId, nodeId);
-        String triggerData = externalTask.getVariable(StringUtils.lowerCase(configurationDto.getTriggerConfiguration().getEventTopic()));
-        ObjectMapper mapper = new ObjectMapper();
-
-        Boolean isTrueCase = true;
+        WorkflowNodeDto config = workflowNodeService.findByWorkflowIdAndNodeId(workflowId, externalTask.getActivityId());
+        String data = externalTask.getVariable(StringUtils.lowerCase(config.getTriggerConfiguration().getEventTopic()));
+        boolean conditionResult;
         try {
-            JsonNode triggerDataObj = mapper.readTree(triggerData);
-            isTrueCase = evaluateConditions(configurationDto, triggerDataObj);
+            conditionResult = evaluateConditions(config, data);
         } catch (Exception e) {
             logger.info("Failed to validate the expression with details message: " + e.getMessage());
             Map<String, Object> result = new HashMap<>();
@@ -60,7 +53,7 @@ public class ConditionExternalTask implements ExternalTaskHandler {
             return;
         }
 
-        if (isTrueCase) {
+        if (conditionResult) {
             logger.info("Condition passed. Proceeding with the 'Yes' case.");
         } else {
             logger.info("Condition not passed. Proceeding with the 'No' case.");
@@ -69,25 +62,20 @@ public class ConditionExternalTask implements ExternalTaskHandler {
         // Complete the task
         logger.info(workflowId + " - End checking the conditions");
         logger.info("==========================================================");
-        externalTaskService.complete(externalTask, Collections.singletonMap("isTrue", isTrueCase));
+        externalTaskService.complete(externalTask, Collections.singletonMap("isTrue", conditionResult));
     }
 
-    private Boolean evaluateConditions(WorkflowNodeDto configurationDto, JsonNode actualData) {
-        Boolean isPassed = false;
-        WorkflowConditionExpressionDto condition = configurationDto.getCondition();
-        Map<String, Object> myVariables = new HashMap<>();
-        for(String key : condition.getReferenceObjects()) {
-            JsonNode extractNode = extractNodeFromPath(actualData, key);
-            myVariables.put(key, extractNode.asText());
+    private boolean evaluateConditions(WorkflowNodeDto config, String jsonData) throws JsonProcessingException {
+        JsonNode dataNode = objectMapper.readTree(jsonData);
+        StandardEvaluationContext context = new StandardEvaluationContext();
+
+        for (String ref : config.getCondition().getReferenceObjects()) {
+            JsonNode extracted = extractNodeFromPath(dataNode, ref);
+            context.setVariable(ref, extracted.asText());
         }
 
-        StandardEvaluationContext context = new StandardEvaluationContext();
-        context.setRootObject(myVariables);
-
         ExpressionParser parser = new SpelExpressionParser();
-        Expression expression = parser.parseExpression(condition.getExpression());
-        isPassed = expression.getValue(context, Boolean.class);
-
-        return isPassed;
+        Expression expression = parser.parseExpression(config.getCondition().getExpression());
+        return Boolean.TRUE.equals(expression.getValue(context, Boolean.class));
     }
 }

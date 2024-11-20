@@ -2,26 +2,20 @@ package com.qworks.workflow.subscription;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qworks.workflow.dto.WorkflowActionConfigurationDto;
 import com.qworks.workflow.dto.WorkflowNodeDto;
-import com.qworks.workflow.dto.WorkflowTriggerConfigurationDto;
 import com.qworks.workflow.service.WorkflowNodeService;
-import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.core5.http.HttpException;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
-import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.security.KeyManagementException;
@@ -29,15 +23,11 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.logging.Logger;
 
 import static com.qworks.workflow.constants.WorkflowConstants.ACTION_GET;
 import static com.qworks.workflow.constants.WorkflowConstants.ACTION_UPDATE;
-import static com.qworks.workflow.constants.WorkflowConstants.DATA;
-import static com.qworks.workflow.constants.WorkflowConstants.ID;
 import static com.qworks.workflow.util.JsonUtil.generateBodyJson;
-import static com.qworks.workflow.util.JsonUtil.generateBodyJsonForUpdateAction;
 import static com.qworks.workflow.util.RestTemplateUtil.getHttpHeaders;
 import static com.qworks.workflow.util.RestTemplateUtil.getRequestFactory;
 
@@ -45,112 +35,72 @@ import static com.qworks.workflow.util.RestTemplateUtil.getRequestFactory;
 @Service
 @ComponentScan("com.qworks.workflow.service")
 @ExternalTaskSubscription("action_task")
-@RequiredArgsConstructor
-public class ActionExternalTask implements ExternalTaskHandler {
+public class ActionExternalTask extends BaseExternalTaskHandler {
 
     private final static Logger logger = Logger.getLogger(ActionExternalTask.class.getName());
 
-    @Value("${qworks.baseUrl}")
-    private String baseUrl;
-
-    private final WorkflowNodeService workflowNodeService;
+    public ActionExternalTask(WorkflowNodeService workflowNodeService) {
+        super(workflowNodeService);
+    }
 
     @Override
-    public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-        String nodeId = externalTask.getActivityId();
-        String workflowId = externalTask.getProcessDefinitionKey().split("_")[1];
+    public void handleTask(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+        String workflowId = getWorkflowId(externalTask);
         logger.info("==========================================================");
         logger.info(workflowId + " - Start handling the action");
 
-        WorkflowNodeDto configurationDto = this.workflowNodeService.findByWorkflowIdAndNodeId(workflowId, nodeId);
+        WorkflowNodeDto configuration = workflowNodeService.findByWorkflowIdAndNodeId(workflowId, externalTask.getActivityId());
+        WorkflowActionConfigurationDto actionConfig = configuration.getAction();
 
-        Boolean isSuccess = null;
         try {
-            isSuccess = handleAction(externalTask, externalTaskService, configurationDto);
-        } catch (JsonProcessingException | KeyStoreException | NoSuchAlgorithmException | KeyManagementException | HttpException e) {
-            logger.info("Occurred an error while handle the action: " + e.getMessage());
-            externalTaskService.handleBpmnError(externalTask, "errorInAction", "Occurred an error while handle the action");
-            return;
+            if (ACTION_UPDATE.equals(actionConfig.getActionType())) {
+                handleUpdateAction(externalTask, actionConfig);
+            } else if (ACTION_GET.equals(actionConfig.getActionType())) {
+                handleGetAction(externalTask, externalTaskService, actionConfig);
+            }
+            completeTask(externalTaskService, externalTask, true);
+        } catch (Exception e) {
+            completeTask(externalTaskService, externalTask, false, "Failed to handle action: " + e.getMessage());
         }
+    }
 
-        // Complete the task
+    private void handleUpdateAction(ExternalTask task, WorkflowActionConfigurationDto config) throws JsonProcessingException, KeyStoreException, NoSuchAlgorithmException, KeyManagementException, HttpException {
+        JsonNode data = objectMapper.readTree(task.getVariable(StringUtils.lowerCase(config.getObject())).toString());
+        if (data.isArray()) {
+            for (JsonNode item : data) {
+                callApi(item, config, HttpMethod.POST);
+            }
+        } else {
+            callApi(data, config, HttpMethod.POST);
+        }
+    }
+
+    private void handleGetAction(ExternalTask task, ExternalTaskService taskService, WorkflowActionConfigurationDto config) throws JsonProcessingException, KeyStoreException, NoSuchAlgorithmException, KeyManagementException, HttpException {
+        JsonNode data = objectMapper.readTree(task.getVariable(StringUtils.lowerCase(config.getObject())).toString());
+        JsonNode response = callApi(data, config, HttpMethod.GET);
+        if (response != null) {
+            taskService.setVariables(task.getProcessInstanceId(), Map.of(StringUtils.lowerCase(config.getObject()), response.toString()));
+        }
+    }
+
+    private JsonNode callApi(JsonNode data, WorkflowActionConfigurationDto config, HttpMethod method) throws HttpException {
+        String url = baseUrl + (method == HttpMethod.POST ? "updateEndpoint" : "fetchRecordsEndpoint");
+        HttpHeaders headers = getHttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<>(generateBodyJson(data, config), headers);
+
+        ResponseEntity<JsonNode> response = new RestTemplate(getRequestFactory()).exchange(url, method, entity, JsonNode.class);
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new HttpException("Non-successful response");
+        }
+        return response.getBody();
+    }
+
+    private void completeTask(ExternalTaskService service, ExternalTask task, boolean isSuccess, String... errorMessages) {
         Map<String, Object> result = new HashMap<>();
         result.put("isError", !isSuccess);
-        if (!isSuccess) {
-            result.put("errorInTask", nodeId);
+        if (!isSuccess && errorMessages.length > 0) {
+            result.put("errorInTask", errorMessages[0]);
         }
-
-        logger.info(workflowId + " - End handling the action");
-        logger.info("==========================================================");
-        externalTaskService.complete(externalTask, result);
-    }
-
-    private Boolean handleAction(ExternalTask externalTask, ExternalTaskService externalTaskService, WorkflowNodeDto configurationDto)
-            throws JsonProcessingException, KeyStoreException, NoSuchAlgorithmException, KeyManagementException, HttpException {
-        WorkflowActionConfigurationDto actionConfigurationDto = configurationDto.getAction();
-        ObjectMapper mapper = new ObjectMapper();
-
-        if (actionConfigurationDto.getActionType().equals(ACTION_UPDATE)) {
-            String triggerData = externalTask.getVariable(StringUtils.lowerCase(actionConfigurationDto.getObject()));
-            JsonNode triggerDataObj = mapper.readTree(triggerData);
-            if (triggerDataObj.isArray() && triggerDataObj.size() > 0) {
-                for (JsonNode childNode : triggerDataObj) {
-                    callUpdateAPI(childNode, actionConfigurationDto);
-                }
-            } else if (!triggerDataObj.isArray()) {
-                callUpdateAPI(triggerDataObj, actionConfigurationDto);
-            }
-        } else if (actionConfigurationDto.getActionType().equals(ACTION_GET)) {
-            String triggerData = externalTask.getVariable(StringUtils.lowerCase(configurationDto.getTriggerConfiguration().getEventTopic()));
-            JsonNode triggerDataObj = mapper.readTree(triggerData);
-            callGetAPI(externalTask, externalTaskService, triggerDataObj, actionConfigurationDto);
-        }
-
-        return true;
-    }
-
-    private void callUpdateAPI(JsonNode triggerDataObj, WorkflowActionConfigurationDto actionConfigurationDto) throws HttpException {
-        String id = String.valueOf(triggerDataObj.get(ID).asText());
-        String jsonBody = generateBodyJsonForUpdateAction(id, actionConfigurationDto);
-        String url = this.baseUrl + "metabench/standard?apiName=" + actionConfigurationDto.getObject();
-        logger.info("Executing update action with API" + url + " for the body: " + jsonBody);
-        RestTemplate restTemplate = new RestTemplate(getRequestFactory());
-        try {
-            HttpHeaders headers = getHttpHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
-            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new HttpException();
-            }
-        } catch(HttpStatusCodeException e) {
-            throw e;
-        }
-    }
-
-    private void callGetAPI(ExternalTask externalTask, ExternalTaskService externalTaskService, JsonNode triggerDataObj,
-                            WorkflowActionConfigurationDto actionConfigurationDto) throws HttpException {
-        try {
-            RestTemplate restTemplate = new RestTemplate(getRequestFactory());
-            String jsonBody = generateBodyJson(triggerDataObj, actionConfigurationDto);
-            String url = this.baseUrl + "metabench/fetchRecords/" + actionConfigurationDto.getObject() ;
-            HttpHeaders headers = getHttpHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
-            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new HttpException();
-            }
-
-            JsonNode dataArrNode = Objects.requireNonNull(response.getBody()).path(DATA);
-            if (dataArrNode.isArray() && dataArrNode.size() > 0) {
-                logger.info("Found " + dataArrNode.size() + " items in this get request");
-                Map<String, Object> variables = externalTask.getAllVariables();
-                variables.put(StringUtils.lowerCase(actionConfigurationDto.getObject()), dataArrNode.toString());
-                externalTaskService.setVariables(externalTask.getProcessInstanceId(), variables);
-            } else {
-                logger.info("No data was returned from the QWorks system to initiate the workflow");
-            }
-        } catch(HttpStatusCodeException e) {
-            throw e;
-        }
+        service.complete(task, result);
     }
 }
